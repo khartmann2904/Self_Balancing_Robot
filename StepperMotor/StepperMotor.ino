@@ -20,6 +20,18 @@ AccelStepper leftMotor(MOTOR_INTERFACE_TYPE, LEFT_STEP_PIN, LEFT_DIR_PIN);
 AccelStepper rightMotor(MOTOR_INTERFACE_TYPE, RIGHT_STEP_PIN, RIGHT_DIR_PIN);
 MPU6050 mpu6050(Wire);
 
+//PID Constants
+float kp = 40.0;   // Start small (try 10-50)
+float ki = 0.5;    // Start very small (try 0.1-1.0)
+float kd = 1.2;    // Start small (try 1.0-5.0)
+
+float targetAngle = 0.0; // The "Perfectly Level" goal
+float error, lastError, integratedError, derivative;
+float motorSpeed;
+
+unsigned long lastTime;
+
+
 void setup() {
  // Set a constant speed (Steps per second)
   // 800 steps/sec = 1/4 turn per second at 1/16 microstepping
@@ -40,25 +52,26 @@ void setup() {
 
   rightMotor.setMaxSpeed(4000);
   rightMotor.setSpeed(400); 
-  //Hier müssen noch beide en auf masse gelegt werden
-  //MS1 und MS2 PINS auf HIGH
-  pinMode(LEFT_EN_PIN, OUTPUT);
+
+  pinMode(LEFT_EN_PIN, OUTPUT); 
   pinMode(RIGHT_EN_PIN, OUTPUT);
-  pinMode(LEFT_MS1_PIN, OUTPUT);
+  pinMode(LEFT_MS1_PIN, OUTPUT);  //The combination of HIGH and LOW MS_PINS decides on the step size of the motors
   pinMode(RIGHT_MS1_PIN, OUTPUT);
   pinMode(LEFT_MS2_PIN, OUTPUT);
   pinMode(RIGHT_MS2_PIN, OUTPUT);
   
-  digitalWrite(LEFT_EN_PIN, LOW);
+  digitalWrite(LEFT_EN_PIN, LOW); //Turns on the motors
   digitalWrite(RIGHT_EN_PIN, LOW);
 
-  digitalWrite(LEFT_MS1_PIN, LOW);
+  digitalWrite(LEFT_MS1_PIN, LOW);  //The combination of HIGH and LOW MS_PINS decides on the step size of the motors
   digitalWrite(RIGHT_MS1_PIN, LOW);
   digitalWrite(LEFT_MS2_PIN, LOW);
   digitalWrite(RIGHT_MS2_PIN, LOW);
+
 }
 
 void loop() {
+  pidController.Compute();
   mpu6050.update();
 
   // We care about the 'Angle Y' or 'Angle X' depending on 
