@@ -34,7 +34,7 @@ MPU6050 mpu6050(Wire);
 
 //PID Constants (400.0, 1.0, 180.0 works best so far)
 float kp = 400.0;
-float ki = 0.0;   
+float ki = 1.0;   
 float kd = 180.0;
 //Variables for error calculations
 float targetAngle = 0.0; //PID controller tries to control the robot to stay at 0 degrees -> upright position
@@ -74,33 +74,32 @@ void onDisconnectedController(ControllerPtr ctl) {
 }
 
 float processGamepad(ControllerPtr ctl) {
-    // Get r2 and l2 button values (0-1023)
-    int r2 = ctl->throttle();   // Left stick Y-axis (forward/backward)
-    int l2 = ctl->brake();   // Left stick X-axis (left/right)
-    int angleCorrection = 0;
-    //Driving Controls
-    if (r2 > 0) {
-        // Forward
-        int angleCorrection = map(abs(r2), 0, 1023, 0, 5);  // Translates the joystick input range to a 5 degree angle range
-        //Serial.println(angleCorrection);
-        return angleCorrection;
-    } 
-    else if (l2 > 0) {
-        // Reverse
-        int angleCorrection = map(abs(l2), 0, 1023, 0, -5);
-        //Serial.println(angleCorrection);
-        return angleCorrection;
-    }
-    else{
-      targetAngle= 0.0;
-      angleCorrection = 0; 
-    }
-    // Emergency Button
+    // 1. Check emergency button FIRST. 
+    // Otherwise, returning early from joysticks bypasses it!
     if (ctl->a()) { 
-        // Kills all motors, if x button on ps4-controller gets pressed
-        digitalWrite(LEFT_EN_PIN, HIGH);  //EN_PINS get activated to shut off motors
+        digitalWrite(LEFT_EN_PIN, HIGH);  
         digitalWrite(RIGHT_EN_PIN, HIGH);
     }
+
+    int r2 = ctl->throttle();   // Forward trigger
+    int l2 = ctl->brake();      // Reverse trigger
+    
+    // CHANGE THIS TO FLOAT so decimals aren't chopped off!
+    float angleCorrection = 0.0; 
+
+    // 2. Drive Controls
+    if (r2 > 50) { // Added a small deadzone of 50
+        // If it falls flat on its face when moving forward, change the '-' to '+'
+        angleCorrection = -(map(r2, 0, 1023, 0, 100) / 100.0);  // Smooth 0.0 to -4.0 degrees
+    } 
+    else if (l2 > 50) {
+        // If it falls flat on its back when moving backward, change the '+' to '-'
+        angleCorrection = (map(l2, 0, 1023, 0, 100) / 100.0);   // Smooth 0.0 to 4.0 degrees
+    }
+    else {
+        angleCorrection = 0.0; 
+    }
+
     return angleCorrection;
 }
 
@@ -115,8 +114,8 @@ void setup() {
   Serial.println("Done!");
 
   //Max speed for the stepper motors
-  leftMotor.setMaxSpeed(10000);  
-  rightMotor.setMaxSpeed(10000);
+  leftMotor.setMaxSpeed(4000);  
+  rightMotor.setMaxSpeed(4000);
 
   //PINMODES
   pinMode(LEFT_EN_PIN, OUTPUT); 
@@ -150,14 +149,17 @@ void loop() {
   //PID calculation at 500Hz
   if (currentTime - lastTime >= 2) {
     float currentAngle = mpu6050.getAngleX(); // Gets X-angle from the gy-86
-    Serial.println(currentAngle); 
     // Error calculation
     error = currentAngle - targetAngle;
     // Partial term
     float P = kp * error;
     // Integral term
     integratedError += error;
-    integratedError = constraint(integratedError, -500, 500); 
+    integratedError = constraint(integratedError, -200, 200);
+    // Optional: slowly decay the integral when error is tiny
+    if (abs(error) < 0.5) {
+        integratedError *= 0.95; 
+    }
     float I = ki * integratedError;
     // Derivative term
     derivative = error - lastError;
@@ -215,7 +217,4 @@ float constraint(float val, float minVal, float maxVal) {
   if (val < minVal) return minVal;
   if (val > maxVal) return maxVal;
   return val;
-
-
-
 }
