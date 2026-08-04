@@ -2,9 +2,9 @@
 #include <MPU6050_tockn.h>
 #include <Wire.h>
 #include <Bluepad32.h>
-//For my esp32 select DOIT ESP32 DEVKIT V1 board
+// For my esp32 select DOIT ESP32 DEVKIT V1 board
 
-ControllerPtr myControllers[BP32_MAX_GAMEPADS]; //PS4-Controller object
+ControllerPtr myControllers[BP32_MAX_GAMEPADS]; // PS4-Controller object
 
 // Pin Definitions
 #define LEFT_STEP_PIN  16
@@ -17,40 +17,34 @@ ControllerPtr myControllers[BP32_MAX_GAMEPADS]; //PS4-Controller object
 #define RIGHT_EN_PIN 2
 #define RIGHT_MS1_PIN 12
 #define RIGHT_MS2_PIN 14
-//Stepper interface type (1 = Driver with Step/Dir pins)
+// Stepper interface type (1 = Driver with Step/Dir pins)
 #define MOTOR_INTERFACE_TYPE 1
-#define BATTERY_VOLTAGE_PIN 15  //reads battery voltage in order to prevent undercharging
+#define BATTERY_VOLTAGE_PIN 15  // Reads battery voltage in order to prevent undercharging
 
-//Constants for battery voltage calculation
-const float R1 = 32000.0;
+// Constants for battery voltage calculation
+const float R1 = 32000.0; //Ohm
 const float R2 = 10000.0;
-const float RATIO = (R1 + R2) / R2;  // = 4.3
-const float ADC_REF = 3.3;
-const float ADC_RES = 4095.0;
+const float RATIO = (R1 + R2) / R2;
+const float ADC_REF = 3.3;  // Maximal voltage reading for esp32 pin
+const float ADC_RES = 4095.0; // Resolution for the voltage reading
 
-// Initialize the steppers
+// Initialize the stepper motors
 AccelStepper leftMotor(MOTOR_INTERFACE_TYPE, LEFT_STEP_PIN, LEFT_DIR_PIN);
 AccelStepper rightMotor(MOTOR_INTERFACE_TYPE, RIGHT_STEP_PIN, RIGHT_DIR_PIN);
 MPU6050 mpu6050(Wire);
 
-// ===================== INNER LOOP (angle stabilization, 500 Hz) =====================
-//PID Constants (400.0, 1.0, 180.0 works best so far)
+// Inner Loop
 float kp = 400.0; //100
 float ki = 5.0; //0
 float kd = 100.0; //50 200
-//Variables for error calculations
-float targetAngle = 0.0; //combined setpoint = drive command + outer loop bias
+// Variables for error calculations
+float targetAngle = 0.0; //Angle which the cascade controller tries to hold
 float error, lastError, integratedError, derivative;
-float motorSpeed;
 
+float motorSpeed;
 unsigned long lastTime;
 
-// ===================== OUTER LOOP (wheel position hold, 50 Hz) =====================
-// Start conservative - these are the first gains to tune, see notes at bottom of file
-//
-//---- Current gains ----
-//kp=400.00  ki=5.00  kd=100.00
-//posKp=0.05  posKi=0.00  posKd=0.00
+// Constants for outer loop PID-Controller
 float posKp = 0.05;
 float posKi = 0.0;
 float posKd = 0.0;
@@ -58,18 +52,17 @@ float posIntegral = 0.0;
 float posLastError = 0.0;
 float angleBias = 0.0;
 
-// Microstepping - must match your MS1/MS2 pin settings (currently both LOW = full step per TMC2209 datasheet)
+// Microstepping, depending on MS1 and MS2 configuration
 const float stepsPerRev = 200.0 * 8.0;
-const float wheelDiameterMM = 65.0; // adjust to your actual wheel diameter
+const float wheelDiameterMM = 65.0; // Wheel diameter
 const float mmPerStep = (PI * wheelDiameterMM) / stepsPerRev;
-
 unsigned long lastOuterTime = 0;
-const unsigned long outerInterval = 20; // ms -> 50 Hz
+const unsigned long outerInterval = 20; // Value in ms -> 1/T -> 50Hz for 20 ms
 
-// Angle bias safety clamp (degrees) - keep small, this is a safety-critical limit
+// Angle bias safety clamp in degrees, safety-critical limit
 const float MAX_ANGLE_BIAS = 3.0;
 
-//Battery reading funtion
+// Battery reading funtion
 float readBatteryVoltage() {
     long sum = 0;
     for (int i = 0; i < 64; i++) {
@@ -81,7 +74,7 @@ float readBatteryVoltage() {
     return voltage * (10.5 / 12.8); // correction factor = 0.777
 }
 
-//PS4-Controller functions
+// PS4-Controller functions
 void onConnectedController(ControllerPtr ctl) {
     if (myControllers[0] == nullptr) {
         Serial.println("Controller connected!");
@@ -99,16 +92,16 @@ void onDisconnectedController(ControllerPtr ctl) {
     }
 }
 float processGamepad(ControllerPtr ctl) {
-    int stickY = ctl->axisY();  // left stick vertical: negative = up/forward, positive = down/back (Bluepad32 convention)
+    int stickY = ctl->axisY();  // left stick: negative = up, positive = down 
     int angleCorrection = 0;
     Serial.println(stickY);
     if (stickY < -50) {
-        // Forward (deadzone of ~50 to ignore stick drift near center)
+        // Forward (-50 for avoiding stick drift of ps4 controller joystick)
         angleCorrection = map(stickY, -50, -512, 0, 8);
         return angleCorrection;
     }
     else if (stickY > 50) {
-        // Reverse
+        // Reverse (50 for avoiding stick drift of ps4 controller joystick)
         angleCorrection = map(stickY, 50, 512, 0, -8);
         return angleCorrection;
     }
@@ -123,17 +116,14 @@ float processGamepad(ControllerPtr ctl) {
     return angleCorrection;
 }
 
-// ===================== Outer position loop =====================
-// Holds the robot's wheel position steady when idle (no drive command).
+// Outer Position Loop
 // Produces a small angle bias that gets added to the drive command to form targetAngle.
 void updateOuterLoop(bool joystickActive) {
-  if (millis() - lastOuterTime < outerInterval) return;
-  float dt = (millis() - lastOuterTime) / 1000.0;
+  if (millis() - lastOuterTime < outerInterval) return; //returns nothing if outerInterval is not reached yet -> outer loop of cascade controller should be slower than inner loop
+  float dt = (millis() - lastOuterTime) / 1000.0; 
   lastOuterTime = millis();
 
   if (joystickActive) {
-    // Don't fight the driver - reset outer loop so it doesn't wind up while driving,
-    // and so it starts fresh from wherever the robot ends up once idle again.
     posIntegral = 0;
     posLastError = 0;
     angleBias = 0;
@@ -143,8 +133,6 @@ void updateOuterLoop(bool joystickActive) {
   }
 
   // Average of both wheels' traveled distance since last idle reset.
-  // Sign convention matches your existing -motorSpeed/motorSpeed drive convention -
-  // verify on your bench that a positive avgPos really means "moved forward".
   float avgPos = (-leftMotor.currentPosition() + rightMotor.currentPosition()) / 2.0;
   float posMM = avgPos * mmPerStep;
 
@@ -164,9 +152,9 @@ void setup() {
   BP32.setup(&onConnectedController, &onDisconnectedController);
   BP32.enableVirtualDevice(false);
   BP32.forgetBluetoothKeys();  // Clears previous bluetooth pairings
-  Wire.begin();                // Starts I2C communication for Gy-86
+  Wire.begin();                // Starts I2C communication for Gy-86 
   mpu6050.begin();
-  mpu6050.calcGyroOffsets(true); // Calculates offset in order to know what real 'zero' is; Robot should be upright for this adjustment
+  mpu6050.calcGyroOffsets(true); // Calculates offset in order to know what real 'zero' is
   Serial.println("Done!");
 
   //Max speed for the stepper motors
@@ -227,11 +215,8 @@ void loop() {
     float P = kp * error;
     // Integral term
     integratedError += error;
-    integratedError = constraint(integratedError, -500, 500);
+    integratedError = constraint(integratedError, -500, 500); //prevents integratedError from rising too high while tipped over for example
     float I = ki * integratedError;
-    // Derivative term - using gyro rate directly instead of (error - lastError) to avoid
-    // amplifying stepper-induced vibration noise coupled into the IMU. Verify the sign
-    // empirically on your bench - flip it if the response is unstable.
     derivative = gyroRateX;
     float D = kd * derivative;
     // PID-Output
@@ -290,7 +275,7 @@ void loop() {
   
 }
 
-// Simple helper to keep numbers in range
+// Function for keeping values in a defined range
 float constraint(float val, float minVal, float maxVal) {
   if (val < minVal) return minVal;
   if (val > maxVal) return maxVal;
@@ -298,13 +283,14 @@ float constraint(float val, float minVal, float maxVal) {
 }
 
 
+// Function is used for tuning the robot over the serial monitor, so the code doesnt need to uploaded all the time
 void handleSerialTuning() {
   if (Serial.available()) {
     String line = Serial.readStringUntil('\n');
     line.trim();
-    if (line.length() == 0) return;
+    if (line.length() == 0) return; 
 
-    if (line.equalsIgnoreCase("show")) {
+    if (line.equalsIgnoreCase("show")) {  //Command "show" prints the current values of the controller
       Serial.println("---- Current gains ----");
       Serial.print("kp="); Serial.print(kp);
       Serial.print("  ki="); Serial.print(ki);
@@ -326,7 +312,7 @@ void handleSerialTuning() {
     float val = line.substring(sepIdx + 1).toFloat();
     name.toLowerCase();
 
-    if (name == "kp") kp = val;
+    if (name == "kp") kp = val; // Sets values for the changed values
     else if (name == "ki") ki = val;
     else if (name == "kd") kd = val;
     else if (name == "poskp") posKp = val;
