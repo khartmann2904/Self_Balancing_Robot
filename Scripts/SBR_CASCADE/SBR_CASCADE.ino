@@ -54,7 +54,7 @@ float angleBias = 0.0;
 
 // Microstepping, depending on MS1 and MS2 configuration
 const float stepsPerRev = 200.0 * 8.0;
-const float wheelDiameterMM = 65.0; // Wheel diameter
+const float wheelDiameterMM = 116.0; // Wheel diameter
 const float mmPerStep = (PI * wheelDiameterMM) / stepsPerRev;
 unsigned long lastOuterTime = 0;
 const unsigned long outerInterval = 20; // Value in ms -> 1/T -> 50Hz for 20 ms
@@ -158,8 +158,8 @@ void setup() {
   Serial.println("Done!");
 
   //Max speed for the stepper motors
-  leftMotor.setMaxSpeed(10000);
-  rightMotor.setMaxSpeed(10000);
+  leftMotor.setMaxSpeed(20000);
+  rightMotor.setMaxSpeed(20000);
   leftMotor.setCurrentPosition(0);
   rightMotor.setCurrentPosition(0);
 
