@@ -10,6 +10,11 @@ A two-wheeled, self-balancing robot (inverted pendulum) built around an **ESP32*
 - **Input:** PS4 controller via Bluepad32 (Bluetooth)
 - **Chassis:** 3D-printed frame (see `3D_Printing/`)
 
+## Electrical Circuit
+
+<img width="1824" height="1053" alt="image" src="https://github.com/user-attachments/assets/2754bd74-80f2-4fb8-b6df-a43a7ef6d9d1" />
+
+
 ## Control Architecture
 
 The robot uses a **cascade PID control** scheme:
@@ -40,11 +45,8 @@ A `balanceTrim` value is used to compensate for small mechanical/sensor offsets 
 ## Project Status
 
 This is an ongoing build-and-learn platform. Recent work has focused on:
-- Switching the balance loop's derivative term to direct gyro rate for a faster, more stable response
-- Adding the outer position-hold loop
-- Fixing microstepping constants for accurate stepper motion
 - Debugging Bluepad32 controller integration (input handling, axis mapping)
-- Restructuring the drive architecture to command target velocity (mm/s) instead of raw motor output
+- Changing the StepperMotor library to FastAccelStepper library for faster motor control
 - Adding a `balanceTrim` variable to fine-tune the resting balance point
 
 ## Notes
