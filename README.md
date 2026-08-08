@@ -46,7 +46,7 @@ A `balanceTrim` value is used to compensate for small mechanical/sensor offsets 
 
 This is an ongoing build-and-learn platform. Recent work has focused on:
 - Debugging Bluepad32 controller integration (input handling, axis mapping)
-- Changing the StepperMotor library to FastAccelStepper library for faster motor control
+- Changing the AccelStepper library to FastAccelStepper library for faster motor control
 - Adding a `balanceTrim` variable to fine-tune the resting balance point
 
 ## Notes
