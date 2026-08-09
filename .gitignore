@@ -3,6 +3,9 @@
 *.kicad_pcb-bak
 *.sch-bak
 *~
+.history/
+**/.history/
+
 _autosave-*
 *.lock
 fp-info-cache
