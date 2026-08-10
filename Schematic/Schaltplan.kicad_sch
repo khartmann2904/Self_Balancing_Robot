@@ -3580,8 +3580,20 @@
 		(uuid "1876cc38-69f9-4659-a66b-a4816d66c318")
 	)
 	(no_connect
+		(at 127 114.3)
+		(uuid "1bdca51a-24a3-4a16-989d-6d21eb95f6c4")
+	)
+	(no_connect
 		(at 99.06 91.44)
 		(uuid "36807f76-a591-40ea-81df-97f50795c1b1")
+	)
+	(no_connect
+		(at 127 93.98)
+		(uuid "4ee18f2e-8635-4b25-ae86-42a150bdf716")
+	)
+	(no_connect
+		(at 127 119.38)
+		(uuid "516f77a0-269b-4b2f-aa74-3e5086d1f2f4")
 	)
 	(no_connect
 		(at 99.06 106.68)
@@ -3590,6 +3602,10 @@
 	(no_connect
 		(at 68.58 86.36)
 		(uuid "58eec4aa-422b-461d-964e-ea4290a6d0ca")
+	)
+	(no_connect
+		(at 127 116.84)
+		(uuid "6b7161ed-a19b-4fbd-a55a-4a196a33235c")
 	)
 	(no_connect
 		(at 68.58 96.52)
@@ -3614,6 +3630,10 @@
 	(no_connect
 		(at 68.58 83.82)
 		(uuid "98c2a142-a314-45d5-9bd1-eeb28c86bfa4")
+	)
+	(no_connect
+		(at 99.06 124.46)
+		(uuid "99298dae-e390-406f-997e-b54e81d786f9")
 	)
 	(no_connect
 		(at 68.58 81.28)
@@ -3642,6 +3662,10 @@
 	(no_connect
 		(at 99.06 111.76)
 		(uuid "f0fbdf97-3a68-400b-8122-f0d0851bf26b")
+	)
+	(no_connect
+		(at 127 121.92)
+		(uuid "f685535f-e145-4ace-89a1-50c2de7e4080")
 	)
 	(no_connect
 		(at 157.48 40.64)
@@ -5913,7 +5937,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "R"
+		(property "Value" "10k"
 			(at 55.88 45.7199 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6738,7 +6762,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "R"
+		(property "Value" "32k"
 			(at 55.88 34.2899 0)
 			(show_name no)
 			(do_not_autoplace no)
