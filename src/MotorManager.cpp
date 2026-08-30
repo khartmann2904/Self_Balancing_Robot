@@ -9,7 +9,7 @@ void MotorManager::begin() {
     pinMode(stepR, OUTPUT);
     pinMode(dirR, OUTPUT);
     pinMode(enable, OUTPUT);
-    
+
     enableMotors(true);
 }
 
