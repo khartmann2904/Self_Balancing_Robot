@@ -13,3 +13,5 @@ fp-info-cache
 # Output directories
 /gerber/
 /plots/
+
+.pio/
