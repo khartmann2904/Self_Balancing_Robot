@@ -1,4 +1,5 @@
 #include "MotorManager.h"
+#include <FastAccelStepper.h>   
 
 MotorManager::MotorManager(uint8_t stepPinL, uint8_t dirPinL, uint8_t stepPinR, uint8_t dirPinR, uint8_t enPin)
     : stepL(stepPinL), dirL(dirPinL), stepR(stepPinR), dirR(dirPinR), enable(enPin) {}  // Konstruktor, der die Pin-Nummern für die Motoren entgegennimmt

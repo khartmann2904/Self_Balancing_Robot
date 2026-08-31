@@ -1,5 +1,5 @@
-#ifndef BatteryManager_H
-#define BatteryManager_H
+#ifndef BATTERY_MANAGER_H
+#define BATTERY_MANAGER_H
 
 #include <Arduino.h>
 

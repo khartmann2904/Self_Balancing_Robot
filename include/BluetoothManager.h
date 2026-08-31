@@ -2,6 +2,7 @@
 #define BLUETOOTH_MANAGER_H
 
 #include <Arduino.h>
+#include <Bluepad32.h>
 
 class BluetoothManager {
 public:
