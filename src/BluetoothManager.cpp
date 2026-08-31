@@ -10,14 +10,13 @@ BluetoothManager::BluetoothManager()
 
 void BluetoothManager::begin() {
     BP32.setup(&BluetoothManager::staticOnConnected, &BluetoothManager::staticOnDisconnected);
-    BP32.enableVirtualDevice(false);
     BP32.forgetBluetoothKeys(); // Optional: Löscht vorherige Kopplungen
 }
 
 void BluetoothManager::update() {
     BP32.update();
 
-    if (activeController && activeController->isConnected() && activeController->hasData()) {
+    if (activeController && activeController->isConnected()) {
         int stickY = activeController->axisY(); // negative = vorwärts, positive = rückwärts
 
         if (stickY < -STICK_DEADZONE) {
@@ -38,7 +37,7 @@ void BluetoothManager::update() {
     }
 }
 
-float BluetoothManager::getDriveCommand() {
+float BluetoothManager::getDriveCommand() const {
     return currentDriveCommand;
 }
 
@@ -50,13 +49,12 @@ bool BluetoothManager::isConnected() const {
     return (activeController != nullptr && activeController->isConnected());
 }
 
-bool BluetoothManager::isEmergencyStopPressed() {
+bool BluetoothManager::isEmergencyStopPressed() const {
     if (activeController && activeController->isConnected()) {
         return activeController->a(); // 'A' bzw. 'Cross' auf dem Gamepad
     }
     return false;
 }
-
 // Static Callbacks delegieren an die Klasseninstanz
 void BluetoothManager::staticOnConnected(ControllerPtr ctl) {
     if (instance) {
