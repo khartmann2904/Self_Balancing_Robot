@@ -36,7 +36,9 @@ PIDGains anglePID = {20.0f, 0.5f, 1.2f};        //Outer Loop Values
 PIDGains speedPID = {0.1f, 0.01f, 0.0f};        //Inner Loop Values
 ControlLoop controller(anglePID, speedPID);     // Instance of the ControlLoop object with the PID parameters
 
-unsigned long lastLoopTime = 0;
+unsigned long lastControlTime = 0;
+unsigned long lastBatteryCheck = 0;
+bool batteryLow = false;
 
 void setup() {
     Serial.begin(115200);       //Needs to be checked if it lowers performance
@@ -46,7 +48,6 @@ void setup() {
     digitalWrite(RIGHT_MS1_PIN, LOW);
     digitalWrite(LEFT_MS2_PIN, LOW);
     digitalWrite(RIGHT_MS2_PIN, LOW);
-    //The combination of HIGH and LOW MS_PINS decides on the step size of the motors -> TMC2209-Datasheet
 
     imu.begin();    // Initialize IMUManager
     motors.begin(); // Initialize MotorManager
@@ -57,39 +58,41 @@ void setup() {
 
 void loop() {
     unsigned long now = micros();
-    float dt = (now - lastLoopTime) / 1000000.0f;
+
+    // Bluepad32 must be updated continuously to process controller input.
+    bluetooth.update();
 
     //Battery voltage check and motor enable/disable based on battery status
-    if (dt >= 0.1f) {  // Check battery status every 100 ms
-        // Update last loop time for different time intervals to avoid blocking the main loop
-        lastLoopTime = now;
+    if ((now - lastBatteryCheck) >= 100000UL) {  // Check battery status every 100 ms
+        lastBatteryCheck = now;
         //Prints the battery voltage to the serial monitor
         battery.printBatteryStatus();
         // Check if battery is too low and disable motors if necessary
         if (battery.isBatteryLow()) {
             Serial.println("Warnung: Batteriespannung niedrig! Motoren werden deaktiviert.");
             motors.enableMotors(false);
-        } else {
-            motors.enableMotors(true);
         }
     }
 
     // Run the control loop at a fixed frequency (e.g. 200 Hz = 5 ms)
-    if (dt >= 0.005f) {
-        lastLoopTime = now;
+    if ((now - lastControlTime) >= 5000UL) {
+        float dt = (now - lastControlTime) / 1000000.0f;
+        lastControlTime = now;
 
         imu.update();
         float currentAngle = imu.getPitch();
 
         // Safety cutoff in case of a fall (> 45 degrees)
-        if (abs(currentAngle) > 45.0f) {
+        if (batteryLow || bluetooth.isEmergencyStopPressed() || abs(currentAngle) > 45.0f) {
             motors.enableMotors(false);
-            return;
+            return; //Skips the rest of the loop and goes back to the beginning of the loop
         } else {
             motors.enableMotors(true);
         }
 
-        float motorCommand = controller.computeCascade(0.0f, 0.0f, currentAngle, dt); //needs to be worked on to get the speed from the bluetooth controller and the current speed from the encoders
+        float targetSpeed = bluetooth.getDriveCommand();
+        float currentSpeed = 0.0f; // Replace with encoder feedback when available.
+        float motorCommand = controller.computeCascade(targetSpeed, currentSpeed, currentAngle, dt);
         motors.setSpeeds(-motorCommand, motorCommand);  // The sign must be checked depending on how the motors are connected. If the direction is incorrect, simply swap the pins
     }
 }
