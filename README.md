@@ -45,10 +45,9 @@ A `balanceTrim` value is used to compensate for small mechanical/sensor offsets 
 ## TO-Do's
 
 This is an ongoing build-and-learn platform. Recent work has focused on:
-- adding bluetooth functionality
+- Adding bluetooth functionality
 - MotorManager still needs a proper FastAccel library integration
-- 
-
+- Update the ControlLoop class, so it actually works with proper distance data
 ## Notes
 
 This project doubles as a hands-on platform for exploring control theory concepts (PID tuning, cascade control, sensor fusion) alongside embedded systems work (ESP32 firmware, stepper motor control, Bluetooth HID input).

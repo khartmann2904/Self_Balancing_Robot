@@ -3,7 +3,7 @@
 #include "MotorManager.h"
 #include "ControlLoop.h"
 #include "BatteryManager.h"
-#include "BluetoothManager.h"   //Still need to implement the BluetoothManager class and its methods
+#include "BluetoothManager.h"   
 
 // Pin definitions for ESP32
 #define LEFT_STEP_PIN  16
@@ -68,7 +68,8 @@ void loop() {
         //Prints the battery voltage to the serial monitor
         battery.printBatteryStatus();
         // Check if battery is too low and disable motors if necessary
-        if (battery.isBatteryLow()) {
+        batteryLow = battery.isBatteryLow();
+        if (batteryLow) {
             Serial.println("Warnung: Batteriespannung niedrig! Motoren werden deaktiviert.");
             motors.enableMotors(false);
         }
