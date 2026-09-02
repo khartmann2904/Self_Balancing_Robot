@@ -89,7 +89,7 @@ void loop() {
             motors.enableMotors(true);
         }
 
-        float motorCommand = controller.computeCascade(0.0f, 0.0f, currentAngle, dt);
-        motors.setSpeeds(motorCommand, motorCommand);  // The sign must be checked depending on how the motors are connected. If the direction is incorrect, simply swap the pins
+        float motorCommand = controller.computeCascade(0.0f, 0.0f, currentAngle, dt); //needs to be worked on to get the speed from the bluetooth controller and the current speed from the encoders
+        motors.setSpeeds(-motorCommand, motorCommand);  // The sign must be checked depending on how the motors are connected. If the direction is incorrect, simply swap the pins
     }
 }

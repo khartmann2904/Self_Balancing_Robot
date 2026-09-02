@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include <Wire.h>
+#include <MPU6050_tockn.h>
 
 class IMUManager {
 public:
@@ -14,6 +15,7 @@ public:
 private:
     float pitch;
     unsigned long lastUpdate;
+    MPU6050 mpu6050;
 };
 
 #endif
