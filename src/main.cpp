@@ -5,7 +5,7 @@
 #include "BatteryManager.h"
 #include "BluetoothManager.h"   //Still need to implement the BluetoothManager class and its methods
 
-// Pin-Definitionen für ESP32
+// Pin definitions for ESP32
 #define LEFT_STEP_PIN  16
 #define LEFT_DIR_PIN   17
 #define LEFT_EN_PIN 25
@@ -18,35 +18,40 @@
 #define RIGHT_MS2_PIN 14
 #define BATTERY_VOLTAGE_PIN 15
 
-//Widerstandswerte für Spannungsteiler
-#define R1 32000.0f // Widerstand R1 in Ohm
-#define R2 10000.0f // Widerstand R2 in Ohm
+// Resistor values for voltage divider
+#define R1 32000.0f // Resistor R1 in ohms
+#define R2 10000.0f // Resistor R2 in ohms
 
-//Threshold-Spannung für Batterie-Überwachung
-#define BATTERY_LOW_THRESHOLD 9.0f // Spannung in Volt, bei der sich die Motoren abschalten sollen
+// Battery monitoring voltage threshold
+#define BATTERY_LOW_THRESHOLD 9.0f // Voltage in volts at which the motors should be disabled
 
-// Objekte instanziieren
+// Instantiate objects
 IMUManager imu;
 MotorManager motors(LEFT_STEP_PIN, LEFT_DIR_PIN, RIGHT_STEP_PIN, RIGHT_DIR_PIN, RIGHT_EN_PIN);  //passes the values for both motors to the motor manager
 BatteryManager battery(BATTERY_VOLTAGE_PIN, R1, R2, BATTERY_LOW_THRESHOLD);  //passes the values for the voltage divider to the battery manager
+BluetoothManager bluetooth;  // Instance of the BluetoothManager class to handle Bluetooth communication and joystick input
 
-// Regler-Parameter (Kp, Ki, Kd)
+// Controller parameters (Kp, Ki, Kd)
 PIDGains anglePID = {20.0f, 0.5f, 1.2f};        //Outer Loop Values
 PIDGains speedPID = {0.1f, 0.01f, 0.0f};        //Inner Loop Values
-ControlLoop controller(anglePID, speedPID);
+ControlLoop controller(anglePID, speedPID);     // Instance of the ControlLoop object with the PID parameters
 
 unsigned long lastLoopTime = 0;
 
 void setup() {
     Serial.begin(115200);       //Needs to be checked if it lowers performance
-    
-    if (!imu.begin()) {
-        Serial.println("Fehler beim Starten der IMU!");
-    }else{
-        Serial.println("IMU erfolgreich gestartet.");
-    }
 
-    motors.begin();
+    //MS PINS
+    digitalWrite(LEFT_MS1_PIN, LOW);  // The combination of HIGH and LOW MS_PINS decides on the step size of the motors
+    digitalWrite(RIGHT_MS1_PIN, LOW);
+    digitalWrite(LEFT_MS2_PIN, LOW);
+    digitalWrite(RIGHT_MS2_PIN, LOW);
+    //The combination of HIGH and LOW MS_PINS decides on the step size of the motors -> TMC2209-Datasheet
+
+    imu.begin();    // Initialize IMUManager
+    motors.begin(); // Initialize MotorManager
+    bluetooth.begin();  // Initialize BluetoothManager
+
     Serial.println("System erfolgreich gestartet.");
 }
 
@@ -69,14 +74,14 @@ void loop() {
         }
     }
 
-    // Regelkreis mit fester Frequenz ausführen (z. B. 200 Hz = 5 ms)
+    // Run the control loop at a fixed frequency (e.g. 200 Hz = 5 ms)
     if (dt >= 0.005f) {
         lastLoopTime = now;
 
         imu.update();
         float currentAngle = imu.getPitch();
 
-        // Safety-Cutoff bei Sturz (> 45 Grad)
+        // Safety cutoff in case of a fall (> 45 degrees)
         if (abs(currentAngle) > 45.0f) {
             motors.enableMotors(false);
             return;
@@ -85,6 +90,6 @@ void loop() {
         }
 
         float motorCommand = controller.computeCascade(0.0f, 0.0f, currentAngle, dt);
-        motors.setSpeeds(motorCommand, motorCommand);
+        motors.setSpeeds(motorCommand, motorCommand);  // The sign must be checked depending on how the motors are connected. If the direction is incorrect, simply swap the pins
     }
 }

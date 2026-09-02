@@ -13,6 +13,7 @@ class ControlLoop {
 public:
     ControlLoop(PIDGains anglePID, PIDGains speedPID);
     float computeCascade(float targetSpeed, float currentSpeed, float currentAngle, float dt);
+    void setAngleGains(PIDGains gains);
 
 private:
     PIDGains angleGains;

@@ -2,6 +2,7 @@
 #define MOTOR_MANAGER_H
 
 #include <Arduino.h>
+#include <AccelStepper.h>
 
 class MotorManager {
 public:
@@ -15,6 +16,8 @@ private:
     uint8_t stepL, dirL;
     uint8_t stepR, dirR;
     uint8_t enable;
+    AccelStepper leftMotor;
+    AccelStepper rightMotor;
 };
 
 #endif

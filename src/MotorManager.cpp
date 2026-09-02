@@ -1,27 +1,30 @@
 #include "MotorManager.h"
-#include <FastAccelStepper.h>   
+#include "AccelStepper.h"
 
 MotorManager::MotorManager(uint8_t stepPinL, uint8_t dirPinL, uint8_t stepPinR, uint8_t dirPinR, uint8_t enPin)
-    : stepL(stepPinL), dirL(dirPinL), stepR(stepPinR), dirR(dirPinR), enable(enPin) {}  // Konstruktor, der die Pin-Nummern für die Motoren entgegennimmt
-    // Member initialization list verwendet, um die Pin-Nummern den privaten Variablen zuzuweisen, zb stepL(stepPinL) weist den Wert von stepPinL der privaten Variable stepL zu. Dies ist eine effiziente Möglichkeit, die Variablen zu initialisieren, bevor der Konstruktorkörper ausgeführt wird.                                                                                    
+        : stepL(stepPinL), dirL(dirPinL), stepR(stepPinR), dirR(dirPinR), enable(enPin),
+            leftMotor(AccelStepper::DRIVER, stepPinL, dirPinL),
+            rightMotor(AccelStepper::DRIVER, stepPinR, dirPinR) {}  // Constructor that accepts the pin numbers for the motors
+    // The member initialization list assigns the pin numbers to the private variables. For example, stepL(stepPinL) assigns the value of stepPinL to the private variable stepL. This is an efficient way to initialize variables before the constructor body is executed.                                                                                    
 void MotorManager::begin() {
     pinMode(stepL, OUTPUT);
     pinMode(dirL, OUTPUT);
     pinMode(stepR, OUTPUT);
     pinMode(dirR, OUTPUT);
     pinMode(enable, OUTPUT);
-
     enableMotors(true);
 }
 
 void MotorManager::enableMotors(bool en) {
-    digitalWrite(enable, en ? LOW : HIGH); // bei LOW sind die Motoren aktiviert, bei HIGH deaktiviert
+    digitalWrite(enable, en ? LOW : HIGH); // The motors are enabled when LOW and disabled when HIGH
 }  
 
 void MotorManager::setSpeeds(float leftSpeed, float rightSpeed) {
-    // Richtung setzen
-    digitalWrite(dirL, leftSpeed >= 0 ? HIGH : LOW);
-    digitalWrite(dirR, rightSpeed >= 0 ? HIGH : LOW);
+    // Set direction
+    leftMotor.setSpeed(leftSpeed);
+    rightMotor.setSpeed(rightSpeed);
+    leftMotor.runSpeed();
+    rightMotor.runSpeed();
 
-    // TODO: Geschwindigkeiten an Timer / Stepper-Pulse übergeben
+    // TODO: Pass speeds to the timer / stepper pulses
 }

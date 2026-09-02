@@ -11,7 +11,7 @@ public:
     void begin();
     void update();
 
-    // Achtung: const muss hier und in der .cpp identisch sein!
+    // Note: const must be identical here and in the .cpp file!
     float getDriveCommand() const;
     bool isJoystickActive() const;
     bool isConnected() const;

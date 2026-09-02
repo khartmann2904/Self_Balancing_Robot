@@ -1,6 +1,6 @@
 #include "BluetoothManager.h"
-#include <Bluepad32.h>
-// Definition der statischen Member-Variable
+#include "Bluepad32.h"
+// Definition of the static member variable
 BluetoothManager* BluetoothManager::instance = nullptr;
 
 BluetoothManager::BluetoothManager() 
@@ -10,14 +10,14 @@ BluetoothManager::BluetoothManager()
 
 void BluetoothManager::begin() {
     BP32.setup(&BluetoothManager::staticOnConnected, &BluetoothManager::staticOnDisconnected);
-    BP32.forgetBluetoothKeys(); // Optional: Löscht vorherige Kopplungen
+    BP32.forgetBluetoothKeys(); // Optional: Deletes previous pairings
 }
 
 void BluetoothManager::update() {
     BP32.update();
 
     if (activeController && activeController->isConnected()) {
-        int stickY = activeController->axisY(); // negative = vorwärts, positive = rückwärts
+        int stickY = activeController->axisY(); // negative = forward, positive = backward
 
         if (stickY < -STICK_DEADZONE) {
             currentDriveCommand = map(stickY, -STICK_DEADZONE, -512, 0, 8);
@@ -51,11 +51,11 @@ bool BluetoothManager::isConnected() const {
 
 bool BluetoothManager::isEmergencyStopPressed() const {
     if (activeController && activeController->isConnected()) {
-        return activeController->a(); // 'A' bzw. 'Cross' auf dem Gamepad
+        return activeController->a(); // 'A' or 'Cross' on the gamepad
     }
     return false;
 }
-// Static Callbacks delegieren an die Klasseninstanz
+// Static callbacks delegate to the class instance
 void BluetoothManager::staticOnConnected(ControllerPtr ctl) {
     if (instance) {
         instance->handleConnected(ctl);
@@ -72,7 +72,7 @@ void BluetoothManager::handleConnected(ControllerPtr ctl) {
     if (activeController == nullptr) {
         Serial.println("Bluetooth Controller verbunden!");
         activeController = ctl;
-        ctl->setColorLED(0, 255, 0); // Grüne LED als Feedback
+        ctl->setColorLED(0, 255, 0); // Green LED as feedback
     }
 }
 
