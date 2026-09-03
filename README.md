@@ -27,20 +27,49 @@ A `balanceTrim` value is used to compensate for small mechanical/sensor offsets 
 
 ## Repository Structure
 
-| Folder | Contents |
-|---|---|
-| `Scripts` | Firmware/control code for the robot (ESP32) |
-| `Schaltplan` | Circuit schematics / wiring diagrams |
-| `Datasheets` | Component datasheets (MPU6050, TMC2209, ESP32, etc.) |
-| `3D_Printing` | 3D-printable chassis/mounting parts |
+```
+Self_Balancing_Robot/
+├── docs/
+│   └── Datasheets/            # Component datasheets (IMU, drivers, motors)
+├── hardware/
+│   ├── 3D_Printing/           # STL/CAD files for the frame and mounts
+│   └── Schematics/            # KiCad circuit schematics and PCB files
+├── include/                   # Header files
+│   ├── BatteryManager.h
+│   ├── BluetoothManager.h
+│   ├── ControlLoop.h
+│   ├── IMUManager.h
+│   └── MotorManager.h
+├── lib/                       # PlatformIO project-specific libraries
+├── src/                       # Firmware source code
+│   ├── BatteryManager.cpp
+│   ├── BluetoothManager.cpp
+│   ├── ControlLoop.cpp
+│   ├── IMUManager.cpp
+│   ├── MotorManager.cpp
+│   └── main.cpp                # Entry point: setup(), loop(), ties everything together
+├── platformio.ini             # PlatformIO project configuration
+└── .gitignore
+```
+
+## Software Architecture
+
+The firmware is structured around small, single-responsibility classes rather than one monolithic sketch:
+
+- **`ControlLoop`** — runs the cascaded PID control: the outer loop converts a target speed into a target lean angle, and the inner loop converts that angle error into motor output. Also exposes serial-based live gain tuning.
+- **`IMUManager`** — wraps IMU initialization and orientation/angle readout, keeping sensor-specific code out of the control logic.
+- **`MotorManager`** — wraps stepper motor control (step generation, direction, enable/disable), keeping hardware I/O out of the control logic.
+- **`main.cpp`** — wires the above together: reads sensors, runs the control loop, drives the motors, and handles Bluetooth input.
+
+This separation means the control math can be tested/tuned independently of the IMU or motor driver implementation, and either can be swapped out without touching `ControlLoop`.
 
 ## Getting Started
 
-1. **Print the chassis** using the files in `3D_Printing/`.
-2. **Wire the electronics** according to the schematics in `Schaltplan/`, referencing component specs in `Datasheets/` as needed.
-3. **Flash the firmware** in `Scripts/` to the ESP32 (Arduino IDE or PlatformIO, depending on the project setup).
-4. **Calibrate** the IMU and tune the PID gains for the balance loop until the robot can stand upright and recover from small pushes.
-5. **Pair a PS4 controller** via Bluepad32 to drive the robot around once it's balancing reliably.
+1. Flash `src/main.cpp` to the ESP32 (Arduino IDE or PlatformIO).
+2. Wire up the IMU, motor drivers, and motors per [`hardware/Schematics/`](./hardware/Schematics).
+3. Power on and hold the robot upright to let it settle into balance.
+4. Connect via the serial monitor to tune `Kp`/`Ki`/`Kd` live if needed.
+5. Pair a PS4 controller via Bluepad32 for manual drive control.
 
 ## TODO
 
