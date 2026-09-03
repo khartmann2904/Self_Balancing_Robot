@@ -42,12 +42,12 @@ A `balanceTrim` value is used to compensate for small mechanical/sensor offsets 
 4. **Calibrate** the IMU and tune the PID gains for the balance loop until the robot can stand upright and recover from small pushes.
 5. **Pair a PS4 controller** via Bluepad32 to drive the robot around once it's balancing reliably.
 
-## TO-Do's
+## TODO
 
 This is an ongoing build-and-learn platform. Recent work has focused on:
-- Adding bluetooth functionality
 - MotorManager still needs a proper FastAccel library integration
-- Update the ControlLoop class, so it actually works with proper distance data
+ 
+
 ## Notes
 
 This project doubles as a hands-on platform for exploring control theory concepts (PID tuning, cascade control, sensor fusion) alongside embedded systems work (ESP32 firmware, stepper motor control, Bluetooth HID input).
