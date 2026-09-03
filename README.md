@@ -1,5 +1,7 @@
 # Self-Balancing Robot
 
+> 🚧 **Status: ongoing project.** This robot is actively being developed and tuned — expect frequent changes to the firmware, control loop, and hardware as things get refined.
+
 A two-wheeled, self-balancing robot (inverted pendulum) built around an **ESP32**, driven by an IMU-based cascade PID control loop, with stepper-motor actuation and PS4 controller input for manual driving.
 
 <img width="1610" height="1170" alt="robot" src="https://github.com/user-attachments/assets/ebe64cd1-d09e-4216-9bcd-508d340d6657" />
