@@ -44,21 +44,6 @@ float ControlLoop::computeCascade(float driveCommand, long leftPosition, long ri
          + (angleGains.Kd * gyroRate);
 }
 
-float ControlLoop::computeCascade(float targetSpeed, float currentSpeed, float currentAngle, float dt) {
-    if (dt <= 0.0f) {
-        return 0.0f;
-    }
-
-    const float speedError = targetSpeed - currentSpeed;
-    speedIntegral += speedError * dt;
-    speedIntegral = constrain(speedIntegral, -50.0f, 50.0f);
-    const float targetAngle = (speedGains.Kp * speedError) + (speedGains.Ki * speedIntegral);
-    const float angleError = currentAngle - targetAngle;
-    angleIntegral += angleError * dt;
-    angleIntegral = constrain(angleIntegral, -500.0f, 500.0f);
-    return (angleGains.Kp * angleError) + (angleGains.Ki * angleIntegral);
-}
-
 void ControlLoop::setAngleGains(PIDGains gains) {
     angleGains = gains;
 }

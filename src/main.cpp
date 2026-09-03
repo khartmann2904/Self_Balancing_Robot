@@ -83,7 +83,7 @@ void loop() {
         imu.update();
         float currentAngle = imu.getPitch();
         float gyroRate = imu.getGyroX();
-
+            
         // Safety cutoff in case of a fall (> 45 degrees)
         if (batteryLow || bluetooth.isEmergencyStopPressed() || abs(currentAngle) > 45.0f) {
             motors.enableMotors(false);

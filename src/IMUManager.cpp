@@ -24,11 +24,11 @@ void IMUManager::update() {
     pitch = mpu6050.getAngleX();
 }
 
-float IMUManager::getPitch() {
+float IMUManager::getPitch() {  // Returns the current pitch angle of the robot
     return pitch;
 }
 
-float IMUManager::getGyroX() {
+float IMUManager::getGyroX() {  // Returns the pitch-axis gyro rate in degrees per second
     return mpu6050.getGyroX();
 }
 
