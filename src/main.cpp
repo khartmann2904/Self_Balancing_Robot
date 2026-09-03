@@ -27,7 +27,7 @@
 
 // Instantiate objects
 IMUManager imu;
-MotorManager motors(LEFT_STEP_PIN, LEFT_DIR_PIN, RIGHT_STEP_PIN, RIGHT_DIR_PIN, RIGHT_EN_PIN);  //passes the values for both motors to the motor manager
+MotorManager motors(LEFT_STEP_PIN, LEFT_DIR_PIN, LEFT_EN_PIN, RIGHT_STEP_PIN, RIGHT_DIR_PIN, RIGHT_EN_PIN);  //passes the values for both motors to the motor manager
 BatteryManager battery(BATTERY_VOLTAGE_PIN, R1, R2, BATTERY_LOW_THRESHOLD);  //passes the values for the voltage divider to the battery manager
 BluetoothManager bluetooth;  // Instance of the BluetoothManager class to handle Bluetooth communication and joystick input
 
@@ -52,8 +52,9 @@ void setup() {
     imu.begin();    // Initialize IMUManager
     motors.begin(); // Initialize MotorManager
     bluetooth.begin();  // Initialize BluetoothManager
-
+    lastControlTime = micros();  // Initialize lastControlTime to the current time
     Serial.println("System erfolgreich gestartet.");
+    
 }
 
 void loop() {
@@ -61,7 +62,7 @@ void loop() {
 
     // Bluepad32 must be updated continuously to process controller input.
     bluetooth.update();
-
+    ControlLoop::handleSerialTuning(controller);  // Check for PID parameter updates from the serial interface
     //Battery voltage check and motor enable/disable based on battery status
     if ((now - lastBatteryCheck) >= 100000UL) {  // Check battery status every 100 ms
         lastBatteryCheck = now;
@@ -83,7 +84,7 @@ void loop() {
         imu.update();
         float currentAngle = imu.getPitch();
         float gyroRate = imu.getGyroX();
-            
+
         // Safety cutoff in case of a fall (> 45 degrees)
         if (batteryLow || bluetooth.isEmergencyStopPressed() || abs(currentAngle) > 45.0f) {
             motors.enableMotors(false);

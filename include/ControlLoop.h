@@ -14,11 +14,10 @@ public:
     ControlLoop(PIDGains anglePID, PIDGains speedPID);
     float computeCascade(float driveCommand, long leftPosition, long rightPosition,
                          float currentAngle, float gyroRate, bool joystickActive, float dt);
-    float computeCascade(float targetSpeed, float currentSpeed, float currentAngle, float dt);
     void setAngleGains(PIDGains gains);
     void setSpeedGains(PIDGains gains);
     void reset();
-
+    static void handleSerialTuning(ControlLoop& controller);
 private:
     PIDGains angleGains;
     PIDGains speedGains;

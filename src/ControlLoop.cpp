@@ -59,7 +59,7 @@ void ControlLoop::reset() {
     lastPositionError = 0.0f;
 }
 
-void handleSerialTuning(ControlLoop& controller) {  // Function for receiving PID parameters through the serial interface
+void ControlLoop::handleSerialTuning(ControlLoop& controller) {  // Function for receiving PID parameters through the serial interface
     static String inputString = "";
     static bool stringComplete = false;
 
