@@ -25,7 +25,6 @@ The robot uses a **cascade PID control** scheme:
 - **Outer loop (position hold):** holds the robot's position by feeding a target lean angle into the inner balance loop, correcting for drift.
 - **Drive layer:** converts driving commands into a target velocity (mm/s), which is layered on top of the balance/position control so the robot can be driven around with the PS4 controller while still balancing itself.
 
-A `balanceTrim` value is used to compensate for small mechanical/sensor offsets so the robot can rest at true vertical.
 
 ## Repository Structure
 
