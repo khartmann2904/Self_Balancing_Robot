@@ -73,8 +73,6 @@ This separation means the control math can be tested/tuned independently of the 
 5. Pair a PS4 controller via Bluepad32 for manual drive control.
 
 ## TODO
-
-This is an ongoing build-and-learn platform. Recent work has focused on:
 - MotorManager still needs a proper FastAccel library integration
  
 
