@@ -82,18 +82,29 @@ void loop() {
 
         imu.update();
         float currentAngle = imu.getPitch();
+        float gyroRate = imu.getGyroX();
 
         // Safety cutoff in case of a fall (> 45 degrees)
         if (batteryLow || bluetooth.isEmergencyStopPressed() || abs(currentAngle) > 45.0f) {
             motors.enableMotors(false);
+            controller.reset();
             return; //Skips the rest of the loop and goes back to the beginning of the loop
         } else {
             motors.enableMotors(true);
         }
 
         float targetSpeed = bluetooth.getDriveCommand();
-        float currentSpeed = 0.0f; // Replace with encoder feedback when available.
-        float motorCommand = controller.computeCascade(targetSpeed, currentSpeed, currentAngle, dt);
+        if (bluetooth.isJoystickActive()) {
+            motors.resetPositions();
+        }
+        float motorCommand = controller.computeCascade(
+            targetSpeed,
+            motors.getLeftPosition(),
+            motors.getRightPosition(),
+            currentAngle,
+            gyroRate,
+            bluetooth.isJoystickActive(),
+            dt);
         motors.setSpeeds(-motorCommand, motorCommand);  // The sign must be checked depending on how the motors are connected. If the direction is incorrect, simply swap the pins
     }
 }

@@ -8,9 +8,11 @@
 class IMUManager {
 public:
     IMUManager();
-    bool begin();
-    void update();
-    float getPitch();
+    bool begin();   // Initializes the MPU6050 sensor and performs calibration
+    void update();  // Updates the IMU readings and calculates the pitch angle
+    float getPitch();   // Returns the current pitch angle of the robot
+    float getGyroX();    // Returns the pitch-axis gyro rate in degrees per second
+    void printSensorData();  // New method to print sensor data for debugging
 
 private:
     float pitch;

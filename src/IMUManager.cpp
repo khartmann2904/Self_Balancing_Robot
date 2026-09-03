@@ -22,11 +22,21 @@ void IMUManager::update() {
     lastUpdate = now;
     mpu6050.update();
     pitch = mpu6050.getAngleX();
-    Serial.print("Pitch: ");
-    Serial.println(pitch);
-
 }
 
 float IMUManager::getPitch() {
     return pitch;
+}
+
+float IMUManager::getGyroX() {
+    return mpu6050.getGyroX();
+}
+
+void IMUManager::printSensorData() {
+    Serial.print("AccX: "); Serial.print(mpu6050.getAccX());
+    Serial.print(" AccY: "); Serial.print(mpu6050.getAccY());
+    Serial.print(" AccZ: "); Serial.print(mpu6050.getAccZ());
+    Serial.print(" GyroX: "); Serial.print(mpu6050.getGyroX());
+    Serial.print(" GyroY: "); Serial.print(mpu6050.getGyroY());
+    Serial.print(" GyroZ: "); Serial.println(mpu6050.getGyroZ());
 }

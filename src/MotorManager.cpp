@@ -19,6 +19,11 @@ void MotorManager::enableMotors(bool en) {
     digitalWrite(enable, en ? LOW : HIGH); // The motors are enabled when LOW and disabled when HIGH
 }  
 
+void MotorManager::resetPositions() {
+    leftMotor.setCurrentPosition(0);
+    rightMotor.setCurrentPosition(0);
+}
+
 void MotorManager::setSpeeds(float leftSpeed, float rightSpeed) {
     // Set direction
     leftMotor.setSpeed(leftSpeed);
@@ -26,5 +31,12 @@ void MotorManager::setSpeeds(float leftSpeed, float rightSpeed) {
     leftMotor.runSpeed();
     rightMotor.runSpeed();
 
-    // TODO: Pass speeds to the timer / stepper pulses
+}
+
+long MotorManager::getLeftPosition() {
+    return leftMotor.currentPosition();
+}
+
+long MotorManager::getRightPosition() {
+    return rightMotor.currentPosition();
 }

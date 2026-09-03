@@ -10,6 +10,9 @@ public:
     void begin();
     void setSpeeds(float leftSpeed, float rightSpeed);
     void enableMotors(bool enable);
+    void resetPositions();
+    long getLeftPosition();
+    long getRightPosition();
     
     
 private:

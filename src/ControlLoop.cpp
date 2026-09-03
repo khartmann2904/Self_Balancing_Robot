@@ -1,29 +1,77 @@
 #include "ControlLoop.h"
 
 ControlLoop::ControlLoop(PIDGains anglePID, PIDGains speedPID)
-    : angleGains(anglePID), speedGains(speedPID), speedIntegral(0), angleIntegral(0), lastAngleError(0) {}
+        : angleGains(anglePID), speedGains(speedPID), speedIntegral(0), angleIntegral(0),
+            lastAngleError(0), lastPositionError(0) {}
+
+float ControlLoop::computeCascade(float driveCommand, long leftPosition, long rightPosition,
+                                  float currentAngle, float gyroRate, bool joystickActive, float dt) {
+    if (dt <= 0.0f) {
+        return 0.0f;
+    }
+
+    // While driving, the command is the desired lean angle. Position hold resumes from zero when idle.
+    float angleBias = 0.0f;
+    if (joystickActive) {
+        speedIntegral = 0.0f;
+        lastPositionError = 0.0f;
+    } else {
+        const float stepsPerRevolution = 200.0f * 8.0f;
+        const float wheelDiameterMM = 116.0f;
+        const float mmPerStep = (PI * wheelDiameterMM) / stepsPerRevolution;
+        const float averagePosition = (-leftPosition + rightPosition) / 2.0f;
+        const float positionError = -(averagePosition * mmPerStep);
+
+        speedIntegral += positionError * dt;
+        speedIntegral = constrain(speedIntegral, -50.0f, 50.0f);
+        const float positionDerivative = (positionError - lastPositionError) / dt;
+        angleBias = (speedGains.Kp * positionError)
+                  + (speedGains.Ki * speedIntegral)
+                  + (speedGains.Kd * positionDerivative);
+        angleBias = constrain(angleBias, -3.0f, 3.0f);
+        lastPositionError = positionError;
+    }
+
+    const float targetAngle = driveCommand + angleBias;
+
+    // The gyro rate is used directly for the derivative term, as in the original controller.
+    const float angleError = currentAngle - targetAngle;
+    angleIntegral += angleError * dt;
+    angleIntegral = constrain(angleIntegral, -500.0f, 500.0f);
+
+    return (angleGains.Kp * angleError)
+         + (angleGains.Ki * angleIntegral)
+         + (angleGains.Kd * gyroRate);
+}
 
 float ControlLoop::computeCascade(float targetSpeed, float currentSpeed, float currentAngle, float dt) {
-    if (dt <= 0.0f) return 0.0f;
+    if (dt <= 0.0f) {
+        return 0.0f;
+    }
 
-    // 1. Outer controller: speed -> target angle
-    float speedError = targetSpeed - currentSpeed;
+    const float speedError = targetSpeed - currentSpeed;
     speedIntegral += speedError * dt;
-    float targetAngle = (speedGains.Kp * speedError) + (speedGains.Ki * speedIntegral);
-
-    // 2. Inner controller: angle -> motor control (torque/acceleration)
-    float angleError = targetAngle - currentAngle;
+    speedIntegral = constrain(speedIntegral, -50.0f, 50.0f);
+    const float targetAngle = (speedGains.Kp * speedError) + (speedGains.Ki * speedIntegral);
+    const float angleError = currentAngle - targetAngle;
     angleIntegral += angleError * dt;
-    float angleDerivative = (angleError - lastAngleError) / dt;
-    lastAngleError = angleError;
-
-    float output = (angleGains.Kp * angleError) + (angleGains.Ki * angleIntegral) + (angleGains.Kd * angleDerivative);
-
-    return output;
+    angleIntegral = constrain(angleIntegral, -500.0f, 500.0f);
+    return (angleGains.Kp * angleError) + (angleGains.Ki * angleIntegral);
 }
 
 void ControlLoop::setAngleGains(PIDGains gains) {
     angleGains = gains;
+}
+
+void ControlLoop::setSpeedGains(PIDGains gains) {
+    speedGains = gains;
+}
+
+void ControlLoop::reset() {
+    speedIntegral = 0.0f;
+    angleIntegral = 0.0f;
+    lastAngleError = 0.0f;
+    lastPositionError = 0.0f;
 }
 
 void handleSerialTuning(ControlLoop& controller) {  // Function for receiving PID parameters through the serial interface
