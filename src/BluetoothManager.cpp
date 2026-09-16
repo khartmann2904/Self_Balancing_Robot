@@ -17,8 +17,7 @@ void BluetoothManager::update() {
     BP32.update();
 
     if (activeController && activeController->isConnected()) {
-        int stickY = activeController->axisY(); // negative = forward, positive = backward
-
+        int stickY = activeController->axisY(); // negative = forward, positive = backward           
         if (stickY < -STICK_DEADZONE) {
             currentDriveCommand = map(stickY, -STICK_DEADZONE, -512, 0, 8);
             joystickActive = true;

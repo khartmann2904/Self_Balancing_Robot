@@ -16,10 +16,10 @@ float ControlLoop::computeCascade(float driveCommand, long leftPosition, long ri
         speedIntegral = 0.0f;
         lastPositionError = 0.0f;
     } else {
-        const float stepsPerRevolution = 200.0f * 8.0f;
+        const float stepsPerRevolution = 200.0f * 8.0f; // 200 steps per revolution with 8x microstepping
         const float wheelDiameterMM = 116.0f;
-        const float mmPerStep = (PI * wheelDiameterMM) / stepsPerRevolution;
-        const float averagePosition = (-leftPosition + rightPosition) / 2.0f;
+        const float mmPerStep = (PI * wheelDiameterMM) / stepsPerRevolution; // Calculate the distance in millimeters per step
+        const float averagePosition = (-leftPosition + rightPosition) / 2.0f; //
         const float positionError = -(averagePosition * mmPerStep);
 
         speedIntegral += positionError * dt;

@@ -22,11 +22,14 @@
 #define R1 32000.0f // Resistor R1 in ohms
 #define R2 10000.0f // Resistor R2 in ohms
 
+//Offset for the IMU pitch angle to account for sensor mounting orientation
+#define IMU_PITCH_OFFSET 1.0f // Adjust this value based on the actual
+
 // Battery monitoring voltage threshold
 #define BATTERY_LOW_THRESHOLD 9.0f // Voltage in volts at which the motors should be disabled
 
 // Instantiate objects
-IMUManager imu;
+IMUManager imu(IMU_PITCH_OFFSET);  // Pass the pitch offset to the IMUManager constructor
 MotorManager motors(LEFT_STEP_PIN, LEFT_DIR_PIN, LEFT_EN_PIN, RIGHT_STEP_PIN, RIGHT_DIR_PIN, RIGHT_EN_PIN);  //passes the values for both motors to the motor manager
 BatteryManager battery(BATTERY_VOLTAGE_PIN, R1, R2, BATTERY_LOW_THRESHOLD);  //passes the values for the voltage divider to the battery manager
 BluetoothManager bluetooth;  // Instance of the BluetoothManager class to handle Bluetooth communication and joystick input
@@ -67,12 +70,13 @@ void loop() {
     if ((now - lastBatteryCheck) >= 100000UL) {  // Check battery status every 100 ms
         lastBatteryCheck = now;
         //Prints the battery voltage to the serial monitor
-        battery.printBatteryStatus();
+        //battery.printBatteryStatus();
         // Check if battery is too low and disable motors if necessary
         batteryLow = battery.isBatteryLow();
         if (batteryLow) {
-            Serial.println("Warnung: Batteriespannung niedrig! Motoren werden deaktiviert.");
+            //Serial.println("Warnung: Batteriespannung niedrig! Motoren werden deaktiviert.");
             motors.enableMotors(false);
+            return; // Skips the rest of the loop and goes back to the beginning of the loop
         }
     }
 
@@ -83,13 +87,15 @@ void loop() {
 
         imu.update();
         float currentAngle = imu.getPitch();
+        //Serial.print("Current Angle: "); Serial.println(currentAngle);  // Debugging output for current angle
         float gyroRate = imu.getGyroX();
 
         // Safety cutoff in case of a fall (> 45 degrees)
-        if (batteryLow || bluetooth.isEmergencyStopPressed() || abs(currentAngle) > 45.0f) {
+        if (bluetooth.isEmergencyStopPressed() || abs(currentAngle) > 45.0f) {
             motors.enableMotors(false);
-            controller.reset();
-            return; //Skips the rest of the loop and goes back to the beginning of the loop
+            controller.reset(); // Reset the controller to prevent integral windup
+            Serial.println("Emergency stop activated or robot fell over. Motors disabled.");
+            return; // Skips the rest of the loop and goes back to the beginning of the loop
         } else {
             motors.enableMotors(true);
         }
@@ -98,6 +104,15 @@ void loop() {
         if (bluetooth.isJoystickActive()) {
             motors.resetPositions();
         }
+
+        static unsigned long lastTargetSpeedPrint = 0;
+        if (millis() - lastTargetSpeedPrint >= 500) {
+            lastTargetSpeedPrint = millis();
+            Serial.print("Target Speed: ");
+            Serial.println(targetSpeed);
+        }
+
+
         float motorCommand = controller.computeCascade(
             targetSpeed,
             motors.getLeftPosition(),
@@ -106,6 +121,7 @@ void loop() {
             gyroRate,
             bluetooth.isJoystickActive(),
             dt);
+        //Serial.print("Motor Command: "); Serial.println(motorCommand);  // Debugging output for motor command
         motors.setSpeeds(-motorCommand, motorCommand);  // The sign must be checked depending on how the motors are connected. If the direction is incorrect, simply swap the pins
     }
 }

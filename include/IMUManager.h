@@ -7,7 +7,7 @@
 
 class IMUManager {
 public:
-    IMUManager();
+    IMUManager(float pitchOffset);  // Constructor that accepts a pitch offset for calibration
     bool begin();   // Initializes the MPU6050 sensor and performs calibration
     void update();  // Updates the IMU readings and calculates the pitch angle
     float getPitch();   // Returns the current pitch angle of the robot
@@ -16,6 +16,7 @@ public:
 
 private:
     float pitch;
+    float pitchOffset;
     unsigned long lastUpdate;
     MPU6050 mpu6050;
 };
