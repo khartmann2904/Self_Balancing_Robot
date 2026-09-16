@@ -7,13 +7,14 @@
 
 class IMUManager {
 public:
-    IMUManager();
+    IMUManager(float pitchOffset);
     bool begin();
     void update();
     float getPitch();
 
 private:
     float pitch;
+    float pitchOffset;
     unsigned long lastUpdate;
     MPU6050 mpu6050;
 };

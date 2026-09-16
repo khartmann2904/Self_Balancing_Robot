@@ -1,7 +1,7 @@
 #include "IMUManager.h"
 #include <Wire.h>
 
-IMUManager::IMUManager() : pitch(0.0), lastUpdate(0), mpu6050(Wire) {}
+IMUManager::IMUManager(float pitchOffset) : pitch(0.0), lastUpdate(0), mpu6050(Wire), pitchOffset(pitchOffset) {}
 
 bool IMUManager::begin() {
     Wire.begin();
@@ -21,9 +21,9 @@ void IMUManager::update() {
     float dt = (now - lastUpdate) / 1000.0f;
     lastUpdate = now;
     mpu6050.update();
-    pitch = mpu6050.getAngleX();
-    Serial.print("Pitch: ");
-    Serial.println(pitch);
+    pitch = mpu6050.getAngleX() + pitchOffset;
+    //Serial.print("Pitch: ");
+    //Serial.println(pitch);
 
 }
 
