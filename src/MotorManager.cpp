@@ -3,8 +3,8 @@
 
 MotorManager::MotorManager(uint8_t stepPinL, uint8_t dirPinL, uint8_t enPinL, uint8_t stepPinR, uint8_t dirPinR, uint8_t enPinR)
         : stepL(stepPinL), dirL(dirPinL), enL(enPinL), stepR(stepPinR), dirR(dirPinR), enR(enPinR),
-            leftMotor(AccelStepper::DRIVER, stepPinL, dirPinL),
-            rightMotor(AccelStepper::DRIVER, stepPinR, dirPinR) {}  // Constructor that accepts the pin numbers for the motors
+            leftMotor(1, stepPinL, dirPinL),
+            rightMotor(1, stepPinR, dirPinR) {}  // Constructor that accepts the pin numbers for the motors
     // The member initialization list assigns the pin numbers to the private variables. For example, stepL(stepPinL) assigns the value of stepPinL to the private variable stepL. This is an efficient way to initialize variables before the constructor body is executed.                                                                                    
 void MotorManager::begin() {
     pinMode(stepL, OUTPUT);
@@ -13,6 +13,10 @@ void MotorManager::begin() {
     pinMode(stepR, OUTPUT);
     pinMode(dirR, OUTPUT);
     pinMode(enR, OUTPUT);
+    leftMotor.setMaxSpeed(20000);
+    rightMotor.setMaxSpeed(20000);
+    leftMotor.setCurrentPosition(0);
+    rightMotor.setCurrentPosition(0);
     enableMotors(true);
 }
 
@@ -27,12 +31,10 @@ void MotorManager::resetPositions() {
 }
 
 void MotorManager::setSpeeds(float leftSpeed, float rightSpeed) {
-    // Set direction
     leftMotor.setSpeed(leftSpeed);
     rightMotor.setSpeed(rightSpeed);
     leftMotor.runSpeed();
     rightMotor.runSpeed();
-
 }
 
 long MotorManager::getLeftPosition() {

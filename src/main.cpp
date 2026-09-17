@@ -47,6 +47,10 @@ void setup() {
     Serial.begin(115200);       //Needs to be checked if it lowers performance
 
     //MS PINS
+    pinMode(LEFT_MS1_PIN, OUTPUT);
+    pinMode(LEFT_MS2_PIN, OUTPUT);
+    pinMode(RIGHT_MS1_PIN, OUTPUT);
+    pinMode(RIGHT_MS2_PIN, OUTPUT);
     digitalWrite(LEFT_MS1_PIN, LOW);  // The combination of HIGH and LOW MS_PINS decides on the step size of the motors
     digitalWrite(RIGHT_MS1_PIN, LOW);
     digitalWrite(LEFT_MS2_PIN, LOW);
@@ -66,6 +70,7 @@ void loop() {
     // Bluepad32 must be updated continuously to process controller input.
     bluetooth.update();
     ControlLoop::handleSerialTuning(controller);  // Check for PID parameter updates from the serial interface
+
     //Battery voltage check and motor enable/disable based on battery status
     if ((now - lastBatteryCheck) >= 100000UL) {  // Check battery status every 100 ms
         lastBatteryCheck = now;
@@ -74,14 +79,14 @@ void loop() {
         // Check if battery is too low and disable motors if necessary
         batteryLow = battery.isBatteryLow();
         if (batteryLow) {
-            //Serial.println("Warnung: Batteriespannung niedrig! Motoren werden deaktiviert.");
+            Serial.println("Warnung: Batteriespannung niedrig! Motoren werden deaktiviert.");
             motors.enableMotors(false);
             return; // Skips the rest of the loop and goes back to the beginning of the loop
         }
     }
 
     // Run the control loop at a fixed frequency (e.g. 200 Hz = 5 ms)
-    if ((now - lastControlTime) >= 5000UL) {
+    if ((now - lastControlTime) >= 1000UL) {
         float dt = (now - lastControlTime) / 1000000.0f;
         lastControlTime = now;
 
@@ -121,7 +126,6 @@ void loop() {
             gyroRate,
             bluetooth.isJoystickActive(),
             dt);
-        //Serial.print("Motor Command: "); Serial.println(motorCommand);  // Debugging output for motor command
-        motors.setSpeeds(-motorCommand, motorCommand);  // The sign must be checked depending on how the motors are connected. If the direction is incorrect, simply swap the pins
+        motors.setSpeeds(motorCommand, motorCommand);  // The sign must be checked depending on how the motors are connected. If the direction is incorrect, simply swap the pins
     }
 }
