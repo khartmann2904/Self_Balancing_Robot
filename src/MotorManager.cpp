@@ -1,11 +1,14 @@
 #include "MotorManager.h"
-#include "AccelStepper.h"
+#include "Config.h"
 
-MotorManager::MotorManager(uint8_t stepPinL, uint8_t dirPinL, uint8_t enPinL, uint8_t stepPinR, uint8_t dirPinR, uint8_t enPinR)
-        : stepL(stepPinL), dirL(dirPinL), enL(enPinL), stepR(stepPinR), dirR(dirPinR), enR(enPinR),
-            leftMotor(1, stepPinL, dirPinL),
-            rightMotor(1, stepPinR, dirPinR) {}  // Constructor that accepts the pin numbers for the motors
-    // The member initialization list assigns the pin numbers to the private variables. For example, stepL(stepPinL) assigns the value of stepPinL to the private variable stepL. This is an efficient way to initialize variables before the constructor body is executed.                                                                                    
+MotorManager::MotorManager(uint8_t stepPinL, uint8_t dirPinL, uint8_t enPinL,
+                           uint8_t stepPinR, uint8_t dirPinR, uint8_t enPinR)
+    : stepL(stepPinL), dirL(dirPinL), enL(enPinL),
+      stepR(stepPinR), dirR(dirPinR), enR(enPinR),
+      leftMotor(AccelStepper::DRIVER, stepPinL, dirPinL),
+      rightMotor(AccelStepper::DRIVER, stepPinR, dirPinR),
+      enabled(false) {}
+
 void MotorManager::begin() {
     pinMode(stepL, OUTPUT);
     pinMode(dirL, OUTPUT);
@@ -13,14 +16,25 @@ void MotorManager::begin() {
     pinMode(stepR, OUTPUT);
     pinMode(dirR, OUTPUT);
     pinMode(enR, OUTPUT);
-    leftMotor.setMaxSpeed(20000);
-    rightMotor.setMaxSpeed(20000);
+
+    digitalWrite(enL, HIGH);   // start disabled (EN is active low); main() arms the robot
+    digitalWrite(enR, HIGH);
+    enabled = false;
+
+    leftMotor.setMaxSpeed(MAX_STEP_RATE);
+    rightMotor.setMaxSpeed(MAX_STEP_RATE);
     leftMotor.setCurrentPosition(0);
     rightMotor.setCurrentPosition(0);
-    enableMotors(true);
 }
 
 void MotorManager::enableMotors(bool en) {
+    if (en == enabled) return;
+    enabled = en;
+    if (!en) {
+        // Stop the step generator too, otherwise it keeps counting steps while disabled.
+        leftMotor.setSpeed(0.0f);
+        rightMotor.setSpeed(0.0f);
+    }
     digitalWrite(enL, en ? LOW : HIGH);
     digitalWrite(enR, en ? LOW : HIGH);
 }
@@ -31,8 +45,12 @@ void MotorManager::resetPositions() {
 }
 
 void MotorManager::setSpeeds(float leftSpeed, float rightSpeed) {
-    leftMotor.setSpeed(leftSpeed);
-    rightMotor.setSpeed(rightSpeed);
+    if (!enabled) {
+        leftSpeed = 0.0f;
+        rightSpeed = 0.0f;
+    }
+    leftMotor.setSpeed(constrain(leftSpeed, -MAX_STEP_RATE, MAX_STEP_RATE));
+    rightMotor.setSpeed(constrain(rightSpeed, -MAX_STEP_RATE, MAX_STEP_RATE));
 }
 
 void MotorManager::run() {

@@ -1,6 +1,4 @@
-#ifndef CONTROL_LOOP_H
-#define CONTROL_LOOP_H
-
+#pragma once
 #include <Arduino.h>
 
 struct PIDGains {
@@ -11,20 +9,30 @@ struct PIDGains {
 
 class ControlLoop {
 public:
-    ControlLoop(PIDGains anglePID, PIDGains speedPID);
-    float computeCascade(float driveCommand, long leftPosition, long rightPosition,
-                         float currentAngle, float gyroRate, bool joystickActive, float dt);
-    void setAngleGains(PIDGains gains);
-    void setSpeedGains(PIDGains gains);
-    void reset();
-    void handleSerialTuning();
-private:
-    PIDGains angleGains;
-    PIDGains speedGains;
-    float speedIntegral;
-    float angleIntegral;
-    float lastAngleError;
-    float lastPositionError;
-};
+    // angleGains = inner loop (balance), positionGains = outer loop (hold position)
+    ControlLoop(PIDGains angleGains, PIDGains positionGains);
 
-#endif
+    // targetAngle: desired lean in degrees (from the joystick)
+    // returns the wheel speed command in steps/s
+    float computeCascade(float targetAngle, long leftPosition, long rightPosition,
+                         float currentAngle, float gyroRate, bool joystickActive, float dt);
+
+    void setAngleGains(PIDGains gains);
+    void setPositionGains(PIDGains gains);
+    void reset();
+
+    // Non-blocking: call every loop() pass.
+    void handleSerialTuning();
+
+private:
+    void processTuningLine(char* line);
+
+    PIDGains angleGains;
+    PIDGains positionGains;
+    float positionIntegral;
+    float angleIntegral;
+    float lastPositionError;
+    bool  positionInitialized;
+    char    serialBuf[32];
+    uint8_t serialLen;
+};
