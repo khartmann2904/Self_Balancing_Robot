@@ -9,7 +9,7 @@ float ControlLoop::computeCascade(float driveCommand, long leftPosition, long ri
     if (dt <= 0.0f) {
         return 0.0f;
     }
-
+    
     // While driving, the command is the desired lean angle. Position hold resumes from zero when idle.
     float angleBias = 0.0f;
     if (joystickActive) {
@@ -59,32 +59,43 @@ void ControlLoop::reset() {
     lastPositionError = 0.0f;
 }
 
-void ControlLoop::handleSerialTuning(ControlLoop& controller) {  // Function for receiving PID parameters through the serial interface
-    static String inputString = "";
-    static bool stringComplete = false;
 
-    while (Serial.available()) {
-        char inChar = (char)Serial.read();
-        if (inChar == '\n') {
-            stringComplete = true;
-            break;
-        } else {
-            inputString += inChar;
-        }
+void ControlLoop::handleSerialTuning() {
+  if (Serial.available()) {
+    String line = Serial.readStringUntil('\n');
+    line.trim();
+    if (line.length() == 0) return; 
+
+    if (line.equalsIgnoreCase("show")) {  //Command "show" prints the current values of the controller
+      Serial.println("---- Current gains ----");
+      Serial.print("kp="); Serial.print(angleGains.Kp);
+      Serial.print("  ki="); Serial.print(angleGains.Ki);
+      Serial.print("  kd="); Serial.println(angleGains.Kd);
+      Serial.print("posKp="); Serial.print(speedGains.Kp);
+      Serial.print("  posKi="); Serial.print(speedGains.Ki);
+      Serial.print("  posKd="); Serial.println(speedGains.Kd);
+      return;
     }
 
-    if (stringComplete) {
-        // Parse the input string for PID parameters
-        float Kp, Ki, Kd;
-        int parsed = sscanf(inputString.c_str(), "Kp:%f Ki:%f Kd:%f", &Kp, &Ki, &Kd);
-        if (parsed == 3) {
-            controller.setAngleGains({Kp, Ki, Kd});
-            Serial.println("PID parameters updated.");
-        } else {
-            Serial.println("Invalid input format. Use: Kp:<value> Ki:<value> Kd:<value>");
-        }
-        // Clear the input string and reset the flag
-        inputString = "";
-        stringComplete = false;
+    int sepIdx = line.indexOf(' ');
+    if (sepIdx == -1) sepIdx = line.indexOf('=');
+    if (sepIdx == -1) {
+      Serial.println("Format: <name> <value>   e.g. kp 450   or  type 'show'");
+      return;
     }
+
+    String name = line.substring(0, sepIdx);
+    float val = line.substring(sepIdx + 1).toFloat();
+    name.toLowerCase();
+
+    if (name == "kp") angleGains.Kp = val; // Sets values for the changed values
+    else if (name == "ki") angleGains.Ki = val;
+    else if (name == "kd") angleGains.Kd = val;
+    else if (name == "poskp") speedGains.Kp = val;
+    else if (name == "poski") speedGains.Ki = val;
+    else if (name == "poskd") speedGains.Kd = val;
+    else { Serial.println("Unknown parameter"); return; }
+
+    Serial.print(name); Serial.print(" set to "); Serial.println(val);
+  }
 }

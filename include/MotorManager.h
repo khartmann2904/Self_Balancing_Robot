@@ -9,6 +9,7 @@ public:
     MotorManager(uint8_t stepPinL, uint8_t dirPinL, uint8_t enPinL, uint8_t stepPinR, uint8_t dirPinR, uint8_t enPinR);
     void begin();
     void setSpeeds(float leftSpeed, float rightSpeed);
+    void run();
     void enableMotors(bool enable);
     void resetPositions();
     long getLeftPosition();

@@ -66,10 +66,10 @@ void setup() {
 
 void loop() {
     unsigned long now = micros();
-
+    motors.run();  // Run the motors
     // Bluepad32 must be updated continuously to process controller input.
     bluetooth.update();
-    ControlLoop::handleSerialTuning(controller);  // Check for PID parameter updates from the serial interface
+    controller.handleSerialTuning();  // Check for PID parameter updates from the serial interface
 
     //Battery voltage check and motor enable/disable based on battery status
     if ((now - lastBatteryCheck) >= 100000UL) {  // Check battery status every 100 ms
@@ -99,7 +99,7 @@ void loop() {
         if (bluetooth.isEmergencyStopPressed() || abs(currentAngle) > 45.0f) {
             motors.enableMotors(false);
             controller.reset(); // Reset the controller to prevent integral windup
-            Serial.println("Emergency stop activated or robot fell over. Motors disabled.");
+            //Serial.println("Emergency stop activated or robot fell over. Motors disabled.");
             return; // Skips the rest of the loop and goes back to the beginning of the loop
         } else {
             motors.enableMotors(true);
@@ -113,8 +113,8 @@ void loop() {
         static unsigned long lastTargetSpeedPrint = 0;
         if (millis() - lastTargetSpeedPrint >= 500) {
             lastTargetSpeedPrint = millis();
-            Serial.print("Target Speed: ");
-            Serial.println(targetSpeed);
+            //Serial.print("Target Speed: ");
+            //Serial.println(targetSpeed);
         }
 
 
@@ -126,6 +126,6 @@ void loop() {
             gyroRate,
             bluetooth.isJoystickActive(),
             dt);
-        motors.setSpeeds(motorCommand, motorCommand);  // The sign must be checked depending on how the motors are connected. If the direction is incorrect, simply swap the pins
+        motors.setSpeeds(-motorCommand, -motorCommand);  // The sign must be checked depending on how the motors are connected. If the direction is incorrect, simply swap the pins
     }
 }

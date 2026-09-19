@@ -17,7 +17,7 @@ public:
     void setAngleGains(PIDGains gains);
     void setSpeedGains(PIDGains gains);
     void reset();
-    static void handleSerialTuning(ControlLoop& controller);
+    void handleSerialTuning();
 private:
     PIDGains angleGains;
     PIDGains speedGains;

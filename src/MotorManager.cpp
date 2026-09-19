@@ -33,6 +33,9 @@ void MotorManager::resetPositions() {
 void MotorManager::setSpeeds(float leftSpeed, float rightSpeed) {
     leftMotor.setSpeed(leftSpeed);
     rightMotor.setSpeed(rightSpeed);
+}
+
+void MotorManager::run() {
     leftMotor.runSpeed();
     rightMotor.runSpeed();
 }
