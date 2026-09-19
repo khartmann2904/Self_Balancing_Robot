@@ -1,4 +1,4 @@
-#pragma once
+#pragma once    // include file only once in a single compilation
 #include <Arduino.h>
 
 // ---------------------------------------------------------------- Pins (ESP32)
@@ -16,10 +16,10 @@
 
 // ---------------------------------------------------------------- Battery
 constexpr float         BATTERY_R1_OHMS          = 32000.0f;   // divider: top resistor
-constexpr float         BATTERY_R2_OHMS          = 10000.0f;   // divider: bottom resistor
-constexpr float         BATTERY_LOW_THRESHOLD_V  = 9.0f;       // set for your pack (3S LiPo: ~9.6 V is safer)
+constexpr float         BATTERY_R2_OHMS          = 10000.0f;   // divider: bottom resistor,
+constexpr float         BATTERY_LOW_THRESHOLD_V  = 9.6f;       // set for your pack (3S LiPo: ~9.6 V is safer)
 constexpr uint8_t       BATTERY_LOW_SAMPLES      = 5;          // consecutive low readings before latching
-constexpr unsigned long BATTERY_CHECK_PERIOD_US  = 100000UL;   // 10 Hz
+constexpr unsigned long BATTERY_CHECK_PERIOD_US  = 100000UL;   // 10 Hz, UL -> unsigned long
 
 // ---------------------------------------------------------------- IMU
 constexpr float IMU_PITCH_OFFSET_DEG = 1.0f;    // mounting offset so 0 deg = balance point

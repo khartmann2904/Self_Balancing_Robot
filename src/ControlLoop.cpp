@@ -7,7 +7,7 @@
 ControlLoop::ControlLoop(PIDGains anglePID, PIDGains positionPID)
     : angleGains(anglePID), positionGains(positionPID),
       positionIntegral(0.0f), angleIntegral(0.0f), lastPositionError(0.0f),
-      positionInitialized(false), serialLen(0) {}
+      positionInitialized(false), stopRequested(false), startRequested(false), serialLen(0) {}
 
 float ControlLoop::computeCascade(float targetAngleCmd, long leftPosition, long rightPosition,
                                   float currentAngle, float gyroRate, bool joystickActive, float dt) {
@@ -71,7 +71,6 @@ void ControlLoop::reset() {
 }
 
 // ---------------------------------------------------------------- Serial tuning
-// Commands: "show", "kp 20", "ki=0.5", "kd 1.2", "poskp 0.1", "poski 0.01", "poskd 0"
 void ControlLoop::handleSerialTuning() {
     while (Serial.available() > 0) {
         const char c = static_cast<char>(Serial.read());
@@ -90,8 +89,22 @@ void ControlLoop::handleSerialTuning() {
     }
 }
 
+bool ControlLoop::takeStopRequest() {
+    const bool r = stopRequested;
+    stopRequested = false;
+    return r;
+}
+
+bool ControlLoop::takeStartRequest() {
+    const bool r = startRequested;
+    startRequested = false;
+    return r;
+}
+
 void ControlLoop::processTuningLine(char* line) {
     while (*line == ' ' || *line == '\t') line++;
+    size_t len = strlen(line);
+    while (len > 0 && (line[len - 1] == ' ' || line[len - 1] == '\t')) line[--len] = '\0';
     if (*line == '\0') return;
     for (char* p = line; *p; ++p) *p = static_cast<char>(tolower(static_cast<unsigned char>(*p)));
 
@@ -103,6 +116,17 @@ void ControlLoop::processTuningLine(char* line) {
         Serial.print("posKp="); Serial.print(positionGains.Kp);
         Serial.print("  posKi="); Serial.print(positionGains.Ki);
         Serial.print("  posKd="); Serial.println(positionGains.Kd);
+        return;
+    }
+
+    if (strcmp(line, "stop") == 0) {
+        stopRequested = true;
+        Serial.println("STOP: motors disabled. Type 'start' to allow re-arming.");
+        return;
+    }
+    if (strcmp(line, "start") == 0) {
+        startRequested = true;
+        Serial.println("START: re-arming allowed (robot must be held upright).");
         return;
     }
 

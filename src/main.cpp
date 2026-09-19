@@ -14,7 +14,7 @@ BatteryManager   battery(BATTERY_VOLTAGE_PIN, BATTERY_R1_OHMS, BATTERY_R2_OHMS, 
 BluetoothManager bluetooth;
 
 // Controller parameters (Kp, Ki, Kd)
-PIDGains anglePID    = {20.0f, 0.5f, 1.2f};    // inner loop: balance angle
+PIDGains anglePID    = {200.0f, 0.0f, 25.0f};    // inner loop: balance angle
 PIDGains positionPID = {0.1f, 0.01f, 0.0f};    // outer loop: position hold
 ControlLoop controller(anglePID, positionPID);
 
@@ -22,6 +22,7 @@ unsigned long lastControlTime  = 0;
 unsigned long lastBatteryCheck = 0;
 bool batteryLow = false;
 bool armed      = false;   // motors only run after the robot was held upright
+bool serialStop = false;   // set by the serial command "stop", cleared by "start"
 
 void setup() {
     Serial.begin(115200);
@@ -61,6 +62,17 @@ void loop() {
     bluetooth.update();
     controller.handleSerialTuning();
 
+    // Serial "stop" takes effect immediately, not only at the next control tick.
+    if (controller.takeStopRequest()) {
+        serialStop = true;
+        motors.enableMotors(false);
+        controller.reset();
+        armed = false;
+    }
+    if (controller.takeStartRequest()) {
+        serialStop = false;
+    }
+
     // Battery check at 10 Hz; the result is latched inside BatteryManager.
     if ((now - lastBatteryCheck) >= BATTERY_CHECK_PERIOD_US) {
         lastBatteryCheck = now;
@@ -87,8 +99,8 @@ void loop() {
     const float currentAngle = imu.getPitch();
     const float gyroRate     = imu.getGyroX();
 
-    // Safety cutoff: emergency stop button or a fall
-    if (bluetooth.isEmergencyStopPressed() || fabsf(currentAngle) > FALL_ANGLE_DEG) {
+    // Safety cutoff: serial stop, emergency stop button or a fall
+    if (serialStop || bluetooth.isEmergencyStopPressed() || fabsf(currentAngle) > FALL_ANGLE_DEG) {
         motors.enableMotors(false);
         controller.reset();
         armed = false;
