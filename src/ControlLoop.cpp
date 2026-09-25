@@ -1,101 +1,154 @@
 #include "ControlLoop.h"
+#include "Config.h"
+#include <string.h>
+#include <stdlib.h>
+#include <ctype.h>
 
-ControlLoop::ControlLoop(PIDGains anglePID, PIDGains speedPID)
-        : angleGains(anglePID), speedGains(speedPID), speedIntegral(0), angleIntegral(0),
-            lastAngleError(0), lastPositionError(0) {}
+ControlLoop::ControlLoop(PIDGains anglePID, PIDGains positionPID)
+    : angleGains(anglePID), positionGains(positionPID),
+      positionIntegral(0.0f), angleIntegral(0.0f), lastPositionError(0.0f),
+      positionInitialized(false), stopRequested(false), startRequested(false), serialLen(0) {}
 
-float ControlLoop::computeCascade(float driveCommand, long leftPosition, long rightPosition,
+float ControlLoop::computeCascade(float targetAngleCmd, long leftPosition, long rightPosition,
                                   float currentAngle, float gyroRate, bool joystickActive, float dt) {
     if (dt <= 0.0f) {
         return 0.0f;
     }
-    
-    // While driving, the command is the desired lean angle. Position hold resumes from zero when idle.
+
+    // Outer loop: position hold. While driving, it is switched off and restarts from zero.
     float angleBias = 0.0f;
     if (joystickActive) {
-        speedIntegral = 0.0f;
-        lastPositionError = 0.0f;
+        positionIntegral = 0.0f;
+        positionInitialized = false;
     } else {
-        const float stepsPerRevolution = 200.0f * 8.0f; // 200 steps per revolution with 8x microstepping
-        const float wheelDiameterMM = 116.0f;
-        const float mmPerStep = (PI * wheelDiameterMM) / stepsPerRevolution; // Calculate the distance in millimeters per step
-        const float averagePosition = (-leftPosition + rightPosition) / 2.0f; //
-        const float positionError = -(averagePosition * mmPerStep);
+        // Both motors get the same signed speed, so both positions count in the same
+        // direction when driving straight -> average is (L + R) / 2.
+        const float averagePosition = (static_cast<float>(leftPosition) + static_cast<float>(rightPosition)) / 2.0f;
+        const float positionError = -POSITION_SIGN * (averagePosition * MM_PER_STEP);
 
-        speedIntegral += positionError * dt;
-        speedIntegral = constrain(speedIntegral, -50.0f, 50.0f);
+        if (!positionInitialized) {          // avoid a derivative spike on the first sample
+            lastPositionError = positionError;
+            positionInitialized = true;
+        }
+
+        positionIntegral += positionError * dt;
+        positionIntegral = constrain(positionIntegral, -POSITION_INTEGRAL_LIMIT, POSITION_INTEGRAL_LIMIT);
         const float positionDerivative = (positionError - lastPositionError) / dt;
-        angleBias = (speedGains.Kp * positionError)
-                  + (speedGains.Ki * speedIntegral)
-                  + (speedGains.Kd * positionDerivative);
-        angleBias = constrain(angleBias, -3.0f, 3.0f);
         lastPositionError = positionError;
+
+        angleBias = (positionGains.Kp * positionError)
+                  + (positionGains.Ki * positionIntegral)
+                  + (positionGains.Kd * positionDerivative);
+        angleBias = constrain(angleBias, -POSITION_BIAS_LIMIT_DEG, POSITION_BIAS_LIMIT_DEG);
     }
 
-    const float targetAngle = driveCommand + angleBias;
+    const float targetAngle = targetAngleCmd + angleBias;
 
-    // The gyro rate is used directly for the derivative term, as in the original controller.
+    // Inner loop: the gyro rate is used directly as the derivative term.
     const float angleError = currentAngle - targetAngle;
     angleIntegral += angleError * dt;
-    angleIntegral = constrain(angleIntegral, -500.0f, 500.0f);
+    if (angleGains.Ki > 0.0f) {
+        // Limit the I-term's contribution to the output, not the raw integral.
+        const float limit = ANGLE_I_MAX_OUT / angleGains.Ki;
+        angleIntegral = constrain(angleIntegral, -limit, limit);
+    } else {
+        angleIntegral = 0.0f;
+    }
 
     return (angleGains.Kp * angleError)
          + (angleGains.Ki * angleIntegral)
          + (angleGains.Kd * gyroRate);
 }
 
-void ControlLoop::setAngleGains(PIDGains gains) {
-    angleGains = gains;
-}
-
-void ControlLoop::setSpeedGains(PIDGains gains) {
-    speedGains = gains;
-}
+void ControlLoop::setAngleGains(PIDGains gains)    { angleGains = gains; }
+void ControlLoop::setPositionGains(PIDGains gains) { positionGains = gains; }
 
 void ControlLoop::reset() {
-    speedIntegral = 0.0f;
+    positionIntegral = 0.0f;
     angleIntegral = 0.0f;
-    lastAngleError = 0.0f;
     lastPositionError = 0.0f;
+    positionInitialized = false;
 }
 
-
+// ---------------------------------------------------------------- Serial tuning
 void ControlLoop::handleSerialTuning() {
-  if (Serial.available()) {
-    String line = Serial.readStringUntil('\n');
-    line.trim();
-    if (line.length() == 0) return; 
+    while (Serial.available() > 0) {
+        const char c = static_cast<char>(Serial.read());
+        if (c == '\n' || c == '\r') {
+            if (serialLen > 0) {
+                serialBuf[serialLen] = '\0';
+                serialLen = 0;
+                processTuningLine(serialBuf);
+            }
+        } else if (serialLen < sizeof(serialBuf) - 1) {
+            serialBuf[serialLen++] = c;
+        } else {
+            serialLen = 0;   // line too long: discard
+            Serial.println("Line too long, discarded");
+        }
+    }
+}
 
-    if (line.equalsIgnoreCase("show")) {  //Command "show" prints the current values of the controller
-      Serial.println("---- Current gains ----");
-      Serial.print("kp="); Serial.print(angleGains.Kp);
-      Serial.print("  ki="); Serial.print(angleGains.Ki);
-      Serial.print("  kd="); Serial.println(angleGains.Kd);
-      Serial.print("posKp="); Serial.print(speedGains.Kp);
-      Serial.print("  posKi="); Serial.print(speedGains.Ki);
-      Serial.print("  posKd="); Serial.println(speedGains.Kd);
-      return;
+bool ControlLoop::takeStopRequest() {
+    const bool r = stopRequested;
+    stopRequested = false;
+    return r;
+}
+
+bool ControlLoop::takeStartRequest() {
+    const bool r = startRequested;
+    startRequested = false;
+    return r;
+}
+
+void ControlLoop::processTuningLine(char* line) {
+    while (*line == ' ' || *line == '\t') line++;
+    size_t len = strlen(line);
+    while (len > 0 && (line[len - 1] == ' ' || line[len - 1] == '\t')) line[--len] = '\0';
+    if (*line == '\0') return;
+    for (char* p = line; *p; ++p) *p = static_cast<char>(tolower(static_cast<unsigned char>(*p)));
+
+    if (strcmp(line, "show") == 0) {
+        Serial.println("---- Current gains ----");
+        Serial.print("kp=");    Serial.print(angleGains.Kp);
+        Serial.print("  ki=");  Serial.print(angleGains.Ki);
+        Serial.print("  kd=");  Serial.println(angleGains.Kd);
+        Serial.print("posKp="); Serial.print(positionGains.Kp);
+        Serial.print("  posKi="); Serial.print(positionGains.Ki);
+        Serial.print("  posKd="); Serial.println(positionGains.Kd);
+        return;
     }
 
-    int sepIdx = line.indexOf(' ');
-    if (sepIdx == -1) sepIdx = line.indexOf('=');
-    if (sepIdx == -1) {
-      Serial.println("Format: <name> <value>   e.g. kp 450   or  type 'show'");
-      return;
+    if (strcmp(line, "stop") == 0) {
+        stopRequested = true;
+        Serial.println("STOP: motors disabled. Type 'start' to allow re-arming.");
+        return;
+    }
+    if (strcmp(line, "start") == 0) {
+        startRequested = true;
+        Serial.println("START: re-arming allowed (robot must be held upright).");
+        return;
     }
 
-    String name = line.substring(0, sepIdx);
-    float val = line.substring(sepIdx + 1).toFloat();
-    name.toLowerCase();
+    char* sep = strpbrk(line, " =");
+    if (sep == nullptr) {
+        Serial.println("Format: <name> <value>   e.g. kp 450   or  type 'show'");
+        return;
+    }
+    *sep = '\0';
+    char* valueStr = sep + 1;
+    while (*valueStr == ' ' || *valueStr == '=' || *valueStr == '\t') valueStr++;
 
-    if (name == "kp") angleGains.Kp = val; // Sets values for the changed values
-    else if (name == "ki") angleGains.Ki = val;
-    else if (name == "kd") angleGains.Kd = val;
-    else if (name == "poskp") speedGains.Kp = val;
-    else if (name == "poski") speedGains.Ki = val;
-    else if (name == "poskd") speedGains.Kd = val;
+    const char* name = line;
+    const float val = static_cast<float>(atof(valueStr));
+
+    if      (strcmp(name, "kp") == 0)    angleGains.Kp = val;
+    else if (strcmp(name, "ki") == 0)  { angleGains.Ki = val;    angleIntegral = 0.0f; }
+    else if (strcmp(name, "kd") == 0)    angleGains.Kd = val;
+    else if (strcmp(name, "poskp") == 0) positionGains.Kp = val;
+    else if (strcmp(name, "poski") == 0) { positionGains.Ki = val; positionIntegral = 0.0f; }
+    else if (strcmp(name, "poskd") == 0) positionGains.Kd = val;
     else { Serial.println("Unknown parameter"); return; }
 
     Serial.print(name); Serial.print(" set to "); Serial.println(val);
-  }
 }

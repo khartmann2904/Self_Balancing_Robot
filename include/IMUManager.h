@@ -1,24 +1,22 @@
-#ifndef IMU_MANAGER_H
-#define IMU_MANAGER_H
-
+#pragma once
 #include <Arduino.h>
-#include <Wire.h>
 #include <MPU6050_tockn.h>
 
 class IMUManager {
 public:
-    IMUManager(float pitchOffset);  // Constructor that accepts a pitch offset for calibration
-    bool begin();   // Initializes the MPU6050 sensor and performs calibration
-    void update();  // Updates the IMU readings and calculates the pitch angle
-    float getPitch();   // Returns the current pitch angle of the robot
-    float getGyroX();    // Returns the pitch-axis gyro rate in degrees per second
-    void printSensorData();  // New method to print sensor data for debugging
+    explicit IMUManager(float pitchOffset);
+
+    bool  begin();            // returns false if the MPU6050 does not answer
+    void  update();           // call once per control tick
+    float getPitch();         // filtered pitch angle in degrees (incl. mounting offset)
+    float getGyroX();         // pitch-axis gyro rate in deg/s
+    void  printSensorData();
 
 private:
-    float pitch;
-    float pitchOffset;
-    unsigned long lastUpdate;
     MPU6050 mpu6050;
+    float pitch;              // angle + offset
+    float angle;              // filtered angle without offset
+    float gyroRate;
+    float pitchOffset;
+    unsigned long lastUpdate; // micros()
 };
-
-#endif
