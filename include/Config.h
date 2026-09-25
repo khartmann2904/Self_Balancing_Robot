@@ -9,15 +9,15 @@
 #define LEFT_MS2_PIN         32
 #define RIGHT_STEP_PIN       27
 #define RIGHT_DIR_PIN        26
-#define RIGHT_EN_PIN          2   // strapping pin: if boot problems occur, move it
-#define RIGHT_MS1_PIN        12   // strapping pin: if boot problems occur, move it
+#define RIGHT_EN_PIN          2
+#define RIGHT_MS1_PIN        12   
 #define RIGHT_MS2_PIN        14
-#define BATTERY_VOLTAGE_PIN  15   // strapping pin, but fine for ADC use
+#define BATTERY_VOLTAGE_PIN  15   // analog input, voltage divider to measure battery voltage
 
 // ---------------------------------------------------------------- Battery
 constexpr float         BATTERY_R1_OHMS          = 32000.0f;   // divider: top resistor
 constexpr float         BATTERY_R2_OHMS          = 10000.0f;   // divider: bottom resistor,
-constexpr float         BATTERY_LOW_THRESHOLD_V  = 9.6f;       // set for your pack (3S LiPo: ~9.6 V is safer)
+constexpr float         BATTERY_LOW_THRESHOLD_V  = 9.6f;       // lowest voltage for the motors to work properly (3.2 V per cell, 3S LiPo)
 constexpr uint8_t       BATTERY_LOW_SAMPLES      = 5;          // consecutive low readings before latching
 constexpr unsigned long BATTERY_CHECK_PERIOD_US  = 100000UL;   // 10 Hz, UL -> unsigned long
 
