@@ -14,8 +14,8 @@ BatteryManager   battery(BATTERY_VOLTAGE_PIN, BATTERY_R1_OHMS, BATTERY_R2_OHMS, 
 BluetoothManager bluetooth;
 
 // Controller parameters (Kp, Ki, Kd)
-PIDGains anglePID    = {200.0f, 0.0f, 25.0f};    // inner loop: balance angle
-PIDGains positionPID = {0.1f, 0.01f, 0.0f};    // outer loop: position hold
+PIDGains anglePID    = {0.0f, 0.0f, 0.0f};    // inner loop: balance angle
+PIDGains positionPID = {0.0f, 0.0f, 0.0f};    // outer loop: position hold
 ControlLoop controller(anglePID, positionPID);
 
 unsigned long lastControlTime  = 0;

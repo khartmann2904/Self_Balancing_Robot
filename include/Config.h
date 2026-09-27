@@ -22,14 +22,14 @@ constexpr uint8_t       BATTERY_LOW_SAMPLES      = 5;          // consecutive lo
 constexpr unsigned long BATTERY_CHECK_PERIOD_US  = 100000UL;   // 10 Hz, UL -> unsigned long
 
 // ---------------------------------------------------------------- IMU
-constexpr float IMU_PITCH_OFFSET_DEG = 1.0f;    // mounting offset so 0 deg = balance point
+constexpr float IMU_PITCH_OFFSET_DEG = 0.0f;    // mounting offset so 0 deg = balance point
 constexpr float IMU_GYRO_WEIGHT      = 0.98f;   // complementary filter: gyro share
 
 // ---------------------------------------------------------------- Mechanics
 // The MS pins are set LOW/LOW in setup(), which is 8x microstepping on a TMC2209.
 constexpr float STEPS_PER_REV    = 200.0f;
 constexpr float MICROSTEPS       = 8.0f;
-constexpr float WHEEL_DIAMETER_MM = 116.0f;
+constexpr float WHEEL_DIAMETER_MM = 70.0f;
 constexpr float MM_PER_STEP      = (PI * WHEEL_DIAMETER_MM) / (STEPS_PER_REV * MICROSTEPS);
 
 // ---------------------------------------------------------------- Motors
