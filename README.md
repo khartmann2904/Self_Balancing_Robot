@@ -84,7 +84,6 @@ This separation means the control math can be tested/tuned independently of the 
 
 ## TODO
 - MotorManager still needs a proper FastAccel library integration
-- ControlLoop values have to checked again after some adjustements in the code
  
 
 ## Notes
