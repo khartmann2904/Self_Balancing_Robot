@@ -7,7 +7,7 @@
 ControlLoop::ControlLoop(PIDGains anglePID, PIDGains positionPID)
     : angleGains(anglePID), positionGains(positionPID),
       positionIntegral(0.0f), angleIntegral(0.0f), lastPositionError(0.0f),
-      positionInitialized(false), stopRequested(false), startRequested(false), serialLen(0) {}
+            positionInitialized(false), serialLen(0) {}
 
 float ControlLoop::computeCascade(float targetAngleCmd, long leftPosition, long rightPosition,
                                   float currentAngle, float gyroRate, bool joystickActive, float dt) {
@@ -71,14 +71,59 @@ void ControlLoop::reset() {
 }
 
 // ---------------------------------------------------------------- Serial tuning
-void ControlLoop::handleSerialTuning() {
+uint8_t ControlLoop::handleSerialTuning() {
+    uint8_t requests = SERIAL_NONE;
     while (Serial.available() > 0) {
         const char c = static_cast<char>(Serial.read());
         if (c == '\n' || c == '\r') {
             if (serialLen > 0) {
                 serialBuf[serialLen] = '\0';
                 serialLen = 0;
-                processTuningLine(serialBuf);
+
+                char* line = serialBuf;
+                while (*line == ' ' || *line == '\t') line++;
+                size_t len = strlen(line);
+                while (len > 0 && (line[len - 1] == ' ' || line[len - 1] == '\t')) line[--len] = '\0';
+                if (*line == '\0') continue;
+                for (char* p = line; *p; ++p) *p = static_cast<char>(tolower(static_cast<unsigned char>(*p)));
+
+                if (strcmp(line, "show") == 0) {
+                    Serial.println("---- Current gains ----");
+                    Serial.print("kp=");    Serial.print(angleGains.Kp);
+                    Serial.print("  ki=");  Serial.print(angleGains.Ki);
+                    Serial.print("  kd=");  Serial.println(angleGains.Kd);
+                    Serial.print("posKp="); Serial.print(positionGains.Kp);
+                    Serial.print("  posKi="); Serial.print(positionGains.Ki);
+                    Serial.print("  posKd="); Serial.println(positionGains.Kd);
+                } else if (strcmp(line, "stop") == 0) {
+                    requests |= SERIAL_STOP;
+                    Serial.println("STOP: motors disabled. Type 'start' to allow re-arming.");
+                } else if (strcmp(line, "start") == 0) {
+                    requests |= SERIAL_START;
+                    Serial.println("START: re-arming allowed (robot must be held upright).");
+                } else {
+                    char* sep = strpbrk(line, " =");
+                    if (sep == nullptr) {
+                        Serial.println("Format: <name> <value>   e.g. kp 450   or  type 'show'");
+                        continue;
+                    }
+                    *sep = '\0';
+                    char* valueStr = sep + 1;
+                    while (*valueStr == ' ' || *valueStr == '=' || *valueStr == '\t') valueStr++;
+
+                    const char* name = line;
+                    const float val = static_cast<float>(atof(valueStr));
+
+                    if      (strcmp(name, "kp") == 0)    angleGains.Kp = val;
+                    else if (strcmp(name, "ki") == 0)  { angleGains.Ki = val;    angleIntegral = 0.0f; }
+                    else if (strcmp(name, "kd") == 0)    angleGains.Kd = val;
+                    else if (strcmp(name, "poskp") == 0) positionGains.Kp = val;
+                    else if (strcmp(name, "poski") == 0) { positionGains.Ki = val; positionIntegral = 0.0f; }
+                    else if (strcmp(name, "poskd") == 0) positionGains.Kd = val;
+                    else { Serial.println("Unknown parameter"); continue; }
+
+                    Serial.print(name); Serial.print(" set to "); Serial.println(val);
+                }
             }
         } else if (serialLen < sizeof(serialBuf) - 1) {
             serialBuf[serialLen++] = c;
@@ -87,68 +132,5 @@ void ControlLoop::handleSerialTuning() {
             Serial.println("Line too long, discarded");
         }
     }
-}
-
-bool ControlLoop::takeStopRequest() {
-    const bool r = stopRequested;
-    stopRequested = false;
-    return r;
-}
-
-bool ControlLoop::takeStartRequest() {
-    const bool r = startRequested;
-    startRequested = false;
-    return r;
-}
-
-void ControlLoop::processTuningLine(char* line) {
-    while (*line == ' ' || *line == '\t') line++;
-    size_t len = strlen(line);
-    while (len > 0 && (line[len - 1] == ' ' || line[len - 1] == '\t')) line[--len] = '\0';
-    if (*line == '\0') return;
-    for (char* p = line; *p; ++p) *p = static_cast<char>(tolower(static_cast<unsigned char>(*p)));
-
-    if (strcmp(line, "show") == 0) {
-        Serial.println("---- Current gains ----");
-        Serial.print("kp=");    Serial.print(angleGains.Kp);
-        Serial.print("  ki=");  Serial.print(angleGains.Ki);
-        Serial.print("  kd=");  Serial.println(angleGains.Kd);
-        Serial.print("posKp="); Serial.print(positionGains.Kp);
-        Serial.print("  posKi="); Serial.print(positionGains.Ki);
-        Serial.print("  posKd="); Serial.println(positionGains.Kd);
-        return;
-    }
-
-    if (strcmp(line, "stop") == 0) {
-        stopRequested = true;
-        Serial.println("STOP: motors disabled. Type 'start' to allow re-arming.");
-        return;
-    }
-    if (strcmp(line, "start") == 0) {
-        startRequested = true;
-        Serial.println("START: re-arming allowed (robot must be held upright).");
-        return;
-    }
-
-    char* sep = strpbrk(line, " =");
-    if (sep == nullptr) {
-        Serial.println("Format: <name> <value>   e.g. kp 450   or  type 'show'");
-        return;
-    }
-    *sep = '\0';
-    char* valueStr = sep + 1;
-    while (*valueStr == ' ' || *valueStr == '=' || *valueStr == '\t') valueStr++;
-
-    const char* name = line;
-    const float val = static_cast<float>(atof(valueStr));
-
-    if      (strcmp(name, "kp") == 0)    angleGains.Kp = val;
-    else if (strcmp(name, "ki") == 0)  { angleGains.Ki = val;    angleIntegral = 0.0f; }
-    else if (strcmp(name, "kd") == 0)    angleGains.Kd = val;
-    else if (strcmp(name, "poskp") == 0) positionGains.Kp = val;
-    else if (strcmp(name, "poski") == 0) { positionGains.Ki = val; positionIntegral = 0.0f; }
-    else if (strcmp(name, "poskd") == 0) positionGains.Kd = val;
-    else { Serial.println("Unknown parameter"); return; }
-
-    Serial.print(name); Serial.print(" set to "); Serial.println(val);
+    return requests;
 }

@@ -21,24 +21,22 @@ public:
     void setPositionGains(PIDGains gains);
     void reset();
 
-    // Non-blocking: call every loop() pass.
-    void handleSerialTuning();
+    enum SerialRequest : uint8_t {
+        SERIAL_NONE = 0,
+        SERIAL_STOP = 1,
+        SERIAL_START = 2
+    };
 
-    // Set by the serial commands "stop" / "start". Each call returns true once, then clears.
-    bool takeStopRequest();
-    bool takeStartRequest();
+    // Non-blocking: call every loop() pass. Returns stop/start request flags.
+    uint8_t handleSerialTuning();
 
 private:
-    void processTuningLine(char* line);
-
     PIDGains angleGains;
     PIDGains positionGains;
     float positionIntegral;
     float angleIntegral;
     float lastPositionError;
     bool  positionInitialized;
-    bool  stopRequested;
-    bool  startRequested;
     char    serialBuf[32];
     uint8_t serialLen;
 };

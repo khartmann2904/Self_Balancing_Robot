@@ -5,6 +5,7 @@
 #include "ControlLoop.h"
 #include "BatteryManager.h"
 #include "BluetoothManager.h"
+#include "Telemetry.h"
 
 // Instantiate objects
 IMUManager       imu(IMU_PITCH_OFFSET_DEG);
@@ -12,6 +13,7 @@ MotorManager     motors(LEFT_STEP_PIN, LEFT_DIR_PIN, LEFT_EN_PIN,
                         RIGHT_STEP_PIN, RIGHT_DIR_PIN, RIGHT_EN_PIN);
 BatteryManager   battery(BATTERY_VOLTAGE_PIN, BATTERY_R1_OHMS, BATTERY_R2_OHMS, BATTERY_LOW_THRESHOLD_V);
 BluetoothManager bluetooth;
+Telemetry telemetry;
 
 // Controller parameters (Kp, Ki, Kd)
 PIDGains anglePID    = {0.0f, 0.0f, 0.0f};    // inner loop: balance angle
@@ -37,6 +39,16 @@ void setup() {
     digitalWrite(LEFT_MS2_PIN, LOW);
     digitalWrite(RIGHT_MS2_PIN, LOW);
 
+    telemetry.begin();
+    telemetry.setParamCallback([](const String& name, float value) {
+    if      (name == "kp") anglePID.Kp = value;
+    else if (name == "ki") anglePID.Ki = value;
+    else if (name == "kd") anglePID.Kd = value;
+    else return;
+    controller.setAngleGains(anglePID);
+    });
+
+
     motors.begin();     // first, so the drivers are disabled during IMU calibration
 
     if (!imu.begin()) {
@@ -48,8 +60,8 @@ void setup() {
 
     bluetooth.begin();
 
-    lastControlTime  = micros();
-    lastBatteryCheck = micros();
+    lastControlTime  = micros();    // time for control loop at 200 Hz
+    lastBatteryCheck = micros();    // battery check at 10 Hz, independent of the control tick
     Serial.println("System erfolgreich gestartet.");
 }
 
@@ -60,19 +72,21 @@ void loop() {
 
     // Bluepad32 must be updated continuously to process controller input.
     bluetooth.update();
-    controller.handleSerialTuning();
+    const uint8_t serialRequests = controller.handleSerialTuning();
 
     // Serial "stop" takes effect immediately, not only at the next control tick.
-    if (controller.takeStopRequest()) {
+    if (serialRequests & ControlLoop::SERIAL_STOP) {
         serialStop = true;
         motors.enableMotors(false);
         controller.reset();
         armed = false;
     }
-    if (controller.takeStartRequest()) {
+    if (serialRequests & ControlLoop::SERIAL_START) {
         serialStop = false;
     }
 
+    // Temporarily disabled for testing; re-enable by removing #if 0 and #endif.
+#if 0
     // Battery check at 10 Hz; the result is latched inside BatteryManager.
     if ((now - lastBatteryCheck) >= BATTERY_CHECK_PERIOD_US) {
         lastBatteryCheck = now;
@@ -88,6 +102,7 @@ void loop() {
         armed = false;
         return;
     }
+#endif
 
     // Control loop at a fixed period
     if ((now - lastControlTime) < CONTROL_PERIOD_US) return;
@@ -116,12 +131,12 @@ void loop() {
         armed = true;
     }
 
-    const bool joystickActive = bluetooth.isJoystickActive();
+    const bool joystickActive = bluetooth.isJoystickActive();   // true while the stick is deflected or the lean is still ramping down
     if (joystickActive) {
-        motors.resetPositions();
+        motors.resetPositions();    // reset the position hold when the joystick is used, so the robot does not "jump" back to the old position
     }
 
-    const float motorCommand = controller.computeCascade(
+    const float motorCommand = controller.computeCascade(   // returns wheel speed command in steps/s
         bluetooth.getDriveCommand(),      // desired lean angle in degrees
         motors.getLeftPosition(),
         motors.getRightPosition(),
@@ -130,6 +145,7 @@ void loop() {
         joystickActive,
         dt);
 
-    // The sign depends on how the motors are wired. If the direction is wrong, swap it here.
-    motors.setSpeeds(-motorCommand, -motorCommand);
+    telemetry.send(currentAngle, bluetooth.getDriveCommand(), motorCommand);
+    motors.setSpeeds(-motorCommand, -motorCommand); // depends on the motor wiring; negative = forward
+    
 }
