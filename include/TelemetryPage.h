@@ -29,9 +29,18 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
   <span style="color:#ffb74d">&#9632; motor output</span>
 </div>
 <div class="row">
+  <strong style="width:100%">Balance (inner loop)</strong>
   <label>Kp <input id="kp" type="number" step="0.1" onchange="sendParam('kp')"></label>
   <label>Ki <input id="ki" type="number" step="0.01" onchange="sendParam('ki')"></label>
   <label>Kd <input id="kd" type="number" step="0.01" onchange="sendParam('kd')"></label>
+</div>
+<div class="row">
+  <strong style="width:100%">Position (outer loop)</strong>
+  <label>posKp <input id="posKp" type="number" step="0.001" onchange="sendParam('posKp')"></label>
+  <label>posKi <input id="posKi" type="number" step="0.0001" onchange="sendParam('posKi')"></label>
+  <label>posKd <input id="posKd" type="number" step="0.001" onchange="sendParam('posKd')"></label>
+</div>
+<div class="row">
   <button onclick="togglePause()" id="pb">Pause</button>
 </div>
 

@@ -21,6 +21,7 @@ PIDGains positionPID = {0.0f, 0.0f, 0.0f};    // outer loop: position hold
 ControlLoop controller(anglePID, positionPID);
 
 unsigned long lastControlTime  = 0;
+
 unsigned long lastBatteryCheck = 0;
 bool batteryLow = false;
 bool armed      = false;   // motors only run after the robot was held upright
@@ -41,11 +42,12 @@ void setup() {
 
     telemetry.begin();
     telemetry.setParamCallback([](const String& name, float value) {
-    if      (name == "kp") anglePID.Kp = value;
-    else if (name == "ki") anglePID.Ki = value;
-    else if (name == "kd") anglePID.Kd = value;
-    else return;
-    controller.setAngleGains(anglePID);
+    if      (name == "kp")    controller.setAngleGains({value, anglePID.Ki, anglePID.Kd});
+    else if (name == "ki")    controller.setAngleGains({anglePID.Kp, value, anglePID.Kd});
+    else if (name == "kd")    controller.setAngleGains({anglePID.Kp, anglePID.Ki, value});
+    else if (name == "posKp") controller.setPositionGains({value, positionPID.Ki, positionPID.Kd});
+    else if (name == "posKi") controller.setPositionGains({positionPID.Kp, value, positionPID.Kd});
+    else if (name == "posKd") controller.setPositionGains({positionPID.Kp, positionPID.Ki, value});
     });
 
 
