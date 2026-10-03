@@ -8,11 +8,11 @@ A two-wheeled, self-balancing robot (inverted pendulum) built around an **ESP32*
 
 ## Hardware
 
-- **Microcontroller:** ESP32
+- **Microcontroller:** ESP32 (ESP32-DEV board, CH340 USB-C)
 - **IMU:** GY-86 / MPU6050 (accelerometer + gyroscope)
 - **Actuation:** NEMA17 stepper motors with TMC2209 stepper drivers
 - **Input:** PS4 controller via Bluepad32 (Bluetooth)
-- **Chassis:** 3D-printed frame (see `3D_Printing/`)
+- **Chassis:** 3D-printed frame (see `hardware/3D_Printing/`)
 
 ## Electrical Circuit
 
@@ -33,35 +33,42 @@ The robot uses a **cascade PID control** scheme:
 ```
 Self_Balancing_Robot/
 ├── docs/
-│   └── Datasheets/            # Component datasheets (IMU, drivers, motors)
+│   └── Datasheets/            # Component datasheets (ESP32 dev board, stepper motor, TMC2209 driver)
 ├── hardware/
 │   ├── 3D_Printing/           # STL/CAD files for the frame and mounts
 │   └── Schematics/            # KiCad circuit schematics and PCB files
 ├── include/                   # Header files
 │   ├── BatteryManager.h
 │   ├── BluetoothManager.h
+│   ├── Config.h               # Central project configuration
 │   ├── ControlLoop.h
 │   ├── IMUManager.h
-│   └── MotorManager.h
+│   ├── MotorManager.h
+│   └── README
 ├── lib/                       # PlatformIO project-specific libraries
+│   └── README
 ├── src/                       # Firmware source code
 │   ├── BatteryManager.cpp
 │   ├── BluetoothManager.cpp
 │   ├── ControlLoop.cpp
 │   ├── IMUManager.cpp
 │   ├── MotorManager.cpp
-│   └── main.cpp                # Entry point: setup(), loop(), ties everything together
+│   └── main.cpp               # Entry point: setup(), loop(), ties everything together
+├── .gitignore
 ├── platformio.ini             # PlatformIO project configuration
-└── .gitignore
+└── README.md
 ```
 
 ## Software Architecture
 
 The firmware is structured around small, single-responsibility classes rather than one monolithic sketch:
 
+- **`Config.h`** — central place for project-wide configuration, so settings live in one file instead of being scattered across the code.
 - **`ControlLoop`** — runs the cascaded PID control: the outer loop converts a target speed into a target lean angle, and the inner loop converts that angle error into motor output. Also exposes serial-based live gain tuning.
 - **`IMUManager`** — wraps IMU initialization and orientation/angle readout, keeping sensor-specific code out of the control logic.
 - **`MotorManager`** — wraps stepper motor control (step generation, direction, enable/disable), keeping hardware I/O out of the control logic.
+- **`BluetoothManager`** — handles PS4 controller pairing and input via Bluepad32.
+- **`BatteryManager`** — handles battery monitoring.
 - **`main.cpp`** — wires the above together: reads sensors, runs the control loop, drives the motors, and handles Bluetooth input.
 
 This separation means the control math can be tested/tuned independently of the IMU or motor driver implementation, and either can be swapped out without touching `ControlLoop`.
@@ -70,9 +77,10 @@ This separation means the control math can be tested/tuned independently of the 
 
 1. Flash `src/main.cpp` to the ESP32 (Arduino IDE or PlatformIO).
 2. Wire up the IMU, motor drivers, and motors per [`hardware/Schematics/`](./hardware/Schematics).
-3. Power on and hold the robot upright to let it settle into balance.
-4. Connect via the serial monitor to tune `Kp`/`Ki`/`Kd` live if needed.
-5. Pair a PS4 controller via Bluepad32 for manual drive control.
+3. Adjust the settings in [`include/Config.h`](./include/Config.h) if your setup differs.
+4. Power on and hold the robot upright to let it settle into balance.
+5. Connect via the serial monitor to tune `Kp`/`Ki`/`Kd` live if needed.
+6. Pair a PS4 controller via Bluepad32 for manual drive control.
 
 ## TODO
 - MotorManager still needs a proper FastAccel library integration
