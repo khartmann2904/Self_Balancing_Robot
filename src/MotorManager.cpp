@@ -58,8 +58,8 @@ void MotorManager::run() {
     rightMotor.runSpeed();
 }
 
-long MotorManager::getLeftPosition() {
-    return leftMotor.currentPosition();
+long MotorManager::getLeftPosition() {  // Accelstepper tracks the position in steps, not mm
+    return leftMotor.currentPosition(); // Counts up when the motor is driven forward, down when driven backward. The sign depends on how the motor is wired.
 }
 
 long MotorManager::getRightPosition() {

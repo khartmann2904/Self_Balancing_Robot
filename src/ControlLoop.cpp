@@ -23,26 +23,26 @@ float ControlLoop::computeCascade(float targetAngleCmd, long leftPosition, long 
     } else {
         // Both motors get the same signed speed, so both positions count in the same
         // direction when driving straight -> average is (L + R) / 2.
-        const float averagePosition = (static_cast<float>(leftPosition) + static_cast<float>(rightPosition)) / 2.0f;
-        const float positionError = -POSITION_SIGN * (averagePosition * MM_PER_STEP);
+        const float averagePosition = (static_cast<float>(leftPosition) + static_cast<float>(rightPosition)) / 2.0f; // average position in steps
+        const float positionError = -POSITION_SIGN * (averagePosition * MM_PER_STEP);   // convert to mm and flip sign if needed
 
         if (!positionInitialized) {          // avoid a derivative spike on the first sample
             lastPositionError = positionError;
             positionInitialized = true;
         }
 
-        positionIntegral += positionError * dt;
-        positionIntegral = constrain(positionIntegral, -POSITION_INTEGRAL_LIMIT, POSITION_INTEGRAL_LIMIT);
-        const float positionDerivative = (positionError - lastPositionError) / dt;
-        lastPositionError = positionError;
+        positionIntegral += positionError * dt; // integrate the position error over time
+        positionIntegral = constrain(positionIntegral, -POSITION_INTEGRAL_LIMIT, POSITION_INTEGRAL_LIMIT); // limit the integral to avoid windup
+        const float positionDerivative = (positionError - lastPositionError) / dt;  // derivative of the position error
+        lastPositionError = positionError;  // save for the next iteration
 
-        angleBias = (positionGains.Kp * positionError)
+        angleBias = (positionGains.Kp * positionError)  
                   + (positionGains.Ki * positionIntegral)
-                  + (positionGains.Kd * positionDerivative);
+                  + (positionGains.Kd * positionDerivative);    // convert position error to a lean angle command
         angleBias = constrain(angleBias, -POSITION_BIAS_LIMIT_DEG, POSITION_BIAS_LIMIT_DEG);
     }
 
-    const float targetAngle = targetAngleCmd + angleBias;
+    const float targetAngle = targetAngleCmd + angleBias;   // the target lean angle is the joystick command plus the position hold bias
 
     // Inner loop: the gyro rate is used directly as the derivative term.
     const float angleError = currentAngle - targetAngle;
@@ -63,15 +63,15 @@ float ControlLoop::computeCascade(float targetAngleCmd, long leftPosition, long 
 void ControlLoop::setAngleGains(PIDGains gains)    { angleGains = gains; }
 void ControlLoop::setPositionGains(PIDGains gains) { positionGains = gains; }
 
-void ControlLoop::reset() {
+void ControlLoop::reset() { // clears the integrals and position error of the cascade controller
     positionIntegral = 0.0f;
     angleIntegral = 0.0f;
     lastPositionError = 0.0f;
     positionInitialized = false;
 }
 
-// ---------------------------------------------------------------- Serial tuning
-void ControlLoop::handleSerialTuning() {
+
+void ControlLoop::handleSerialTuning() {    // Handles
     while (Serial.available() > 0) {
         const char c = static_cast<char>(Serial.read());
         if (c == '\n' || c == '\r') {
@@ -99,56 +99,4 @@ bool ControlLoop::takeStartRequest() {
     const bool r = startRequested;
     startRequested = false;
     return r;
-}
-
-void ControlLoop::processTuningLine(char* line) {
-    while (*line == ' ' || *line == '\t') line++;
-    size_t len = strlen(line);
-    while (len > 0 && (line[len - 1] == ' ' || line[len - 1] == '\t')) line[--len] = '\0';
-    if (*line == '\0') return;
-    for (char* p = line; *p; ++p) *p = static_cast<char>(tolower(static_cast<unsigned char>(*p)));
-
-    if (strcmp(line, "show") == 0) {
-        Serial.println("---- Current gains ----");
-        Serial.print("kp=");    Serial.print(angleGains.Kp);
-        Serial.print("  ki=");  Serial.print(angleGains.Ki);
-        Serial.print("  kd=");  Serial.println(angleGains.Kd);
-        Serial.print("posKp="); Serial.print(positionGains.Kp);
-        Serial.print("  posKi="); Serial.print(positionGains.Ki);
-        Serial.print("  posKd="); Serial.println(positionGains.Kd);
-        return;
-    }
-
-    if (strcmp(line, "stop") == 0) {
-        stopRequested = true;
-        Serial.println("STOP: motors disabled. Type 'start' to allow re-arming.");
-        return;
-    }
-    if (strcmp(line, "start") == 0) {
-        startRequested = true;
-        Serial.println("START: re-arming allowed (robot must be held upright).");
-        return;
-    }
-
-    char* sep = strpbrk(line, " =");
-    if (sep == nullptr) {
-        Serial.println("Format: <name> <value>   e.g. kp 450   or  type 'show'");
-        return;
-    }
-    *sep = '\0';
-    char* valueStr = sep + 1;
-    while (*valueStr == ' ' || *valueStr == '=' || *valueStr == '\t') valueStr++;
-
-    const char* name = line;
-    const float val = static_cast<float>(atof(valueStr));
-
-    if      (strcmp(name, "kp") == 0)    angleGains.Kp = val;
-    else if (strcmp(name, "ki") == 0)  { angleGains.Ki = val;    angleIntegral = 0.0f; }
-    else if (strcmp(name, "kd") == 0)    angleGains.Kd = val;
-    else if (strcmp(name, "poskp") == 0) positionGains.Kp = val;
-    else if (strcmp(name, "poski") == 0) { positionGains.Ki = val; positionIntegral = 0.0f; }
-    else if (strcmp(name, "poskd") == 0) positionGains.Kd = val;
-    else { Serial.println("Unknown parameter"); return; }
-
-    Serial.print(name); Serial.print(" set to "); Serial.println(val);
 }
