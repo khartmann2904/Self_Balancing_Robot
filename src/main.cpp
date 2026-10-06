@@ -38,14 +38,10 @@ void setup() {
     digitalWrite(RIGHT_MS2_PIN, LOW);
 
     motors.begin();     // first, so the drivers are disabled during IMU calibration
-
-    if (!imu.begin()) {
-        while (true) {
-            Serial.println("IMU nicht gefunden - bitte Verkabelung pruefen.");
-            delay(1000);
-        }
+    while (!imu.begin()) {
+        Serial.println("IMU nicht gefunden - bitte Verkabelung pruefen.");
+        delay(1000);
     }
-
     bluetooth.begin();
 
     lastControlTime  = micros();
@@ -54,82 +50,83 @@ void setup() {
 }
 
 void loop() {
-    motors.run();   // emit step pulses as often as possible, independent of the control tick
+    motors.run();   // emit step pulses as often as possible
 
-    const unsigned long now = micros();
+    const unsigned long now = micros(); // current time since boot in microseconds
 
     // Bluepad32 must be updated continuously to process controller input.
     bluetooth.update();
-    controller.handleSerialTuning();
+    controller.handleSerialTuning();    // non-blocking: reads serial input and updates PID gains if a tuning command was received
 
     // Serial "stop" takes effect immediately, not only at the next control tick.
     if (controller.takeStopRequest()) {
         serialStop = true;
         motors.enableMotors(false);
         controller.reset();
-        armed = false;
+        armed = false;  // turns off the motors and clears stale positions
     }
     if (controller.takeStartRequest()) {
-        serialStop = false;
+        serialStop = false; // allows the control loop to run again
     }
 
-    // Battery check at 10 Hz; the result is latched inside BatteryManager.
+    // Battery check at set frequenzy; the result is latched inside BatteryManager.
     if ((now - lastBatteryCheck) >= BATTERY_CHECK_PERIOD_US) {
         lastBatteryCheck = now;
-        const bool wasLow = batteryLow;
         batteryLow = battery.isBatteryLow();
-        if (batteryLow && !wasLow) {
+        if (batteryLow) {
             Serial.println("Warnung: Batteriespannung niedrig! Motoren werden deaktiviert.");
         }
     }
-    if (batteryLow) {
+    if (batteryLow) {   
         motors.enableMotors(false);
         controller.reset();
         armed = false;
         return;
     }
 
-    // Control loop at a fixed period
-    if ((now - lastControlTime) < CONTROL_PERIOD_US) return;
+    // Control loop at fixed frequency (200 Hz). The time since the last tick is passed to the controller for integral and derivative calculations.
+    if ((now - lastControlTime) >= CONTROL_PERIOD_US) {
+        const float dt = (now - lastControlTime) / 1000000.0f; // passed time since last control tick in seconds
+        lastControlTime = now;
 
-    const float dt = (now - lastControlTime) / 1000000.0f;
-    lastControlTime = now;
+        imu.update();
+        const float currentAngle = imu.getPitch();
+        const float gyroRate     = imu.getGyroX();
 
-    imu.update();
-    const float currentAngle = imu.getPitch();
-    const float gyroRate     = imu.getGyroX();
+        // Safety cutoff: serial stop, emergency stop button or a fall
+        if (serialStop || bluetooth.isEmergencyStopPressed() || fabsf(currentAngle) > FALL_ANGLE_DEG) {
+            motors.enableMotors(false);
+            controller.reset();
+            armed = false;
+            return;
+        }
 
-    // Safety cutoff: serial stop, emergency stop button or a fall
-    if (serialStop || bluetooth.isEmergencyStopPressed() || fabsf(currentAngle) > FALL_ANGLE_DEG) {
-        motors.enableMotors(false);
-        controller.reset();
-        armed = false;
-        return;
+        // (Re-)arm only when the robot is held close to upright. Clears stale positions.
+        if (!armed) {
+            if (fabsf(currentAngle) > ARM_ANGLE_DEG) return;
+            motors.resetPositions();
+            controller.reset(); // clears stale integrals and position error of the cascade controller
+            motors.enableMotors(true);
+            armed = true;
+        }
+
+        const bool joystickActive = bluetooth.isJoystickActive();
+        if (joystickActive) {
+            motors.resetPositions();
+        }
+
+        const float motorCommand = controller.computeCascade(
+            bluetooth.getDriveCommand(),      // desired lean angle in degrees
+            motors.getLeftPosition(),
+            motors.getRightPosition(),
+            currentAngle,
+            gyroRate,
+            joystickActive,
+            dt);
+
+        // The sign depends on how the motors are wired
+        motors.setSpeeds(-motorCommand, -motorCommand);
     }
 
-    // (Re-)arm only when the robot is held close to upright. Clears stale positions.
-    if (!armed) {
-        if (fabsf(currentAngle) > ARM_ANGLE_DEG) return;
-        motors.resetPositions();
-        controller.reset();
-        motors.enableMotors(true);
-        armed = true;
-    }
-
-    const bool joystickActive = bluetooth.isJoystickActive();
-    if (joystickActive) {
-        motors.resetPositions();
-    }
-
-    const float motorCommand = controller.computeCascade(
-        bluetooth.getDriveCommand(),      // desired lean angle in degrees
-        motors.getLeftPosition(),
-        motors.getRightPosition(),
-        currentAngle,
-        gyroRate,
-        joystickActive,
-        dt);
-
-    // The sign depends on how the motors are wired. If the direction is wrong, swap it here.
-    motors.setSpeeds(-motorCommand, -motorCommand);
+    
 }

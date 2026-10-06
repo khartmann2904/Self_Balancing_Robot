@@ -11,7 +11,7 @@ ControlLoop::ControlLoop(PIDGains anglePID, PIDGains positionPID)
 
 float ControlLoop::computeCascade(float targetAngleCmd, long leftPosition, long rightPosition,
                                   float currentAngle, float gyroRate, bool joystickActive, float dt) {
-    if (dt <= 0.0f) {
+    if (dt <= 0.0f) {   // avoid division by zero or negative time, but this should never happen if the control loop is called at a fixed period
         return 0.0f;
     }
 
