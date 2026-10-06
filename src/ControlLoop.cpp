@@ -1,6 +1,6 @@
 #include "ControlLoop.h"
 #include "Config.h"
-#include <string.h>
+#include <string.h> // Libraries for handleSerialTuning
 #include <stdlib.h>
 #include <ctype.h>
 

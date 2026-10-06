@@ -39,10 +39,10 @@ constexpr float MAX_STEP_RATE = 4000.0f;
 
 // ---------------------------------------------------------------- Control
 constexpr unsigned long CONTROL_PERIOD_US = 5000;   // 200 Hz
-constexpr float FALL_ANGLE_DEG            = 45.0f;  // motors off beyond this
-constexpr float ARM_ANGLE_DEG             = 3.0f;   // must be within this to (re-)arm
+constexpr float FALL_ANGLE_DEG            = 40.0f;  // motors off beyond this
+constexpr float ARM_ANGLE_DEG             = 3.0f;   // must be within this angle to arm the robot (and reset stale positions)
 
-constexpr float POSITION_BIAS_LIMIT_DEG   = 3.0f;   // max lean the position loop may request
+constexpr float POSITION_BIAS_LIMIT_DEG   = 10.0f;   // max lean the position loop may request
 constexpr float POSITION_INTEGRAL_LIMIT   = 50.0f;  // mm*s
 constexpr float ANGLE_I_MAX_OUT           = 100.0f; // max contribution of the angle I-term (steps/s)
 

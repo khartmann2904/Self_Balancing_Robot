@@ -10,22 +10,22 @@ bool IMUManager::begin() {
     Wire.begin();
     Wire.setClock(400000);   // 400 kHz: much shorter read time than the 100 kHz default
 
-    Wire.beginTransmission(MPU6050_ADDR);
-    if (Wire.endTransmission() != 0) {
+    Wire.beginTransmission(MPU6050_ADDR);   // check if the MPU6050 is present on the I2C bus
+    if (Wire.endTransmission() != 0) {  // non-zero means no ACK from the device
         Serial.println("MPU6050 not found on I2C!");
         return false;
     }
 
-    mpu6050.begin();
+    mpu6050.begin();    // initializes the MPU6050 and sets the default configuration (gyro range ±250 deg/s, accel range ±2 g, 1 kHz sample rate)
     Serial.println("MPU6050 calibrating - keep the robot still...");
     mpu6050.calcGyroOffsets(true);   // determines the gyro zero point
     Serial.println("MPU6050 initialized and calibrated.");
 
     // Start the filter from the accelerometer angle.
-    mpu6050.update();
-    angle = mpu6050.getAccAngleX();
-    gyroRate = mpu6050.getGyroX();
-    pitch = angle + pitchOffset;
+    mpu6050.update();   // reads the sensor and updates the internal angle and gyro values
+    angle = mpu6050.getAccAngleX(); // initial angle from the accelerometer
+    gyroRate = mpu6050.getGyroX();  // initial gyro rate
+    pitch = angle + pitchOffset;    // initial pitch angle including the mounting offset
     lastUpdate = micros();
     return true;
 }
@@ -38,11 +38,11 @@ void IMUManager::update() {
     const unsigned long now = micros();
     float dt = (now - lastUpdate) / 1000000.0f;
     lastUpdate = now;
-    if (dt <= 0.0f || dt > 0.05f) dt = 0.05f;
+    if (dt <= 0.0f || dt > 0.05f) dt = 0.05f;   // limits dt to a reasonable range to avoid spikes after a long delay (e.g., during debugging)
 
     gyroRate = mpu6050.getGyroX();
     const float accAngle = mpu6050.getAccAngleX();
-    angle = IMU_GYRO_WEIGHT * (angle + gyroRate * dt) + (1.0f - IMU_GYRO_WEIGHT) * accAngle;
+    angle = IMU_GYRO_WEIGHT * (angle + gyroRate * dt) + (1.0f - IMU_GYRO_WEIGHT) * accAngle;    // complementary filter: gyro + accel
     pitch = angle + pitchOffset;
 }
 

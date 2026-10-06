@@ -111,8 +111,8 @@ void loop() {
         }
 
         const bool joystickActive = bluetooth.isJoystickActive();
-        if (joystickActive) {
-            motors.resetPositions();
+        if (joystickActive) {   // reset the position hold when the joystick is moved, otherwise the robot may run away when the stick is released
+            motors.resetPositions();    // clears stale positions
         }
 
         const float motorCommand = controller.computeCascade(
